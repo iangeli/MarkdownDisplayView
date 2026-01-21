@@ -8,7 +8,7 @@
 import UIKit
 import MarkdownDisplayKit
 
-final class CrashReproViewController: UIViewController {
+final class HistoryMDViewController: UIViewController {
 
     private let tableView = UITableView(frame: .zero, style: .plain)
     private var messages: [String] = []
@@ -143,7 +143,7 @@ final class CrashReproViewController: UIViewController {
 
 }
 
-extension CrashReproViewController: UITableViewDataSource, UITableViewDelegate {
+extension HistoryMDViewController: UITableViewDataSource, UITableViewDelegate {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         messages.count
     }

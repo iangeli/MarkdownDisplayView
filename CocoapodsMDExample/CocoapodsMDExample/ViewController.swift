@@ -30,7 +30,7 @@ class ViewController: UIViewController {
 
     private lazy var crashReproButton: UIButton = {
         let button = UIButton(type: .system)
-        button.setTitle("TableView Crash Repro", for: .normal)
+        button.setTitle("TableView MD List", for: .normal)
         button.titleLabel?.font = .systemFont(ofSize: 18, weight: .medium)
         button.addTarget(self, action: #selector(openCrashReproDemo), for: .touchUpInside)
         button.translatesAutoresizingMaskIntoConstraints = false
@@ -80,7 +80,7 @@ class ViewController: UIViewController {
     }
 
     @objc private func openCrashReproDemo() {
-        let vc = CrashReproViewController()
+        let vc = HistoryMDViewController()
         vc.modalPresentationStyle = .fullScreen
         self.present(vc, animated: true, completion: nil)
     }
