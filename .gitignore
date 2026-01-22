@@ -1,4 +1,5 @@
 /CocoapodsMDExample/Pods
+/CocoapodsMDExample/CocoapodsMDExample/Config.local.json
 
 # SPM build artifacts
 .build/

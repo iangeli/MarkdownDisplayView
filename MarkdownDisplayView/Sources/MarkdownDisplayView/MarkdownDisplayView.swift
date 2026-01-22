@@ -39,6 +39,16 @@ public final class MarkdownViewTextKit: UIView {
 
     // 配置开关
     public var enableTypewriterEffect: Bool = true
+
+    public func updateTypewriterSpeed(charsPerStep: Int? = nil,
+                                      baseDuration: TimeInterval? = nil,
+                                      elementGapDuration: TimeInterval? = nil) {
+        typewriterEngine.updateSpeed(
+            charsPerStep: charsPerStep,
+            baseDuration: baseDuration,
+            elementGapDuration: elementGapDuration
+        )
+    }
     
     public var configuration: MarkdownConfiguration = .default {
         didSet { scheduleRerender() }
@@ -59,6 +69,7 @@ public final class MarkdownViewTextKit: UIView {
     public var onImageTap: ((String) -> Void)?
     public var onHeightChange: ((CGFloat) -> Void)?
     public var onTOCItemTap: ((MarkdownTOCItem) -> Void)?
+    private let inlineSegmentAttributeKey = NSAttributedString.Key("MarkdownInlineSegment")
     // 🆕 新增：用于暂存流式输出结束时的回调
     private var onStreamComplete: (() -> Void)?
     // 新增属性来存储原子区间
@@ -2086,8 +2097,9 @@ public final class MarkdownViewTextKit: UIView {
 
         case .attributedText(let attributedString):
             if attributedString.length > 0 {
-                let topSpacing = suppressTopSpacing ? 0 : configuration.paragraphTopSpacing
-                let bottomSpacing = suppressBottomSpacing ? 0 : configuration.paragraphBottomSpacing
+                let isInlineSegment = attributedString.attribute(inlineSegmentAttributeKey, at: 0, effectiveRange: nil) != nil
+                let topSpacing = suppressTopSpacing ? 0 : (isInlineSegment ? 0 : configuration.paragraphTopSpacing)
+                let bottomSpacing = suppressBottomSpacing ? 0 : (isInlineSegment ? 0 : configuration.paragraphBottomSpacing)
                 return createTextView(
                     with: attributedString,
                     width: containerWidth,
@@ -5150,7 +5162,9 @@ public final class MarkdownViewTextKit: UIView {
             // 检查 attributedText 内容变化
             if case .attributedText(let newAttr) = newElement,
                case .attributedText(let oldAttr) = oldElement {
-                if newAttr.length > oldAttr.length {
+                let newInline = newAttr.attribute(inlineSegmentAttributeKey, at: 0, effectiveRange: nil) != nil
+                let oldInline = oldAttr.attribute(inlineSegmentAttributeKey, at: 0, effectiveRange: nil) != nil
+                if newAttr.string != oldAttr.string || newInline != oldInline {
                     print("[CODEBLOCK_DEBUG] 🔄 Updating text[\(i)]: \(oldAttr.length) -> \(newAttr.length) chars")
                     updateElementView(at: i, with: newElement, containerWidth: containerWidth)
                     oldElements[i] = newElement

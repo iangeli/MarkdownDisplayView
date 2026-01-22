@@ -32,19 +32,33 @@ class TypewriterEngine {
 
     // 基础耗时
     // ⭐️ 优化：降低基础延迟，加快打字速度
-    private let baseDuration: TimeInterval = 0.012  // 从18ms降到12ms
+    private var baseDuration: TimeInterval = 0.012  // 从18ms降到12ms
 
     // ⭐️ 优化：批量显示字符数
-    private let charsPerStep: Int = 6  // 每次显示6个字符（从4增加到6）
+    private var charsPerStep: Int = 6  // 每次显示6个字符（从4增加到6）
 
     // ⭐️ 新增：元素间的额外延迟（块级元素结束后的等待时间）
-    private let elementGapDuration: TimeInterval = 0.04  // 从120ms降到40ms
+    private var elementGapDuration: TimeInterval = 0.04  // 从120ms降到40ms
 
     // ⭐️ 新增：标记上一个任务是否是块级任务（用于判断是否需要添加间隔）
     private var lastTaskWasBlock: Bool = false
 
     var onComplete: (() -> Void)?
     var onLayoutChange: (() -> Void)?
+
+    func updateSpeed(charsPerStep: Int? = nil,
+                     baseDuration: TimeInterval? = nil,
+                     elementGapDuration: TimeInterval? = nil) {
+        if let charsPerStep {
+            self.charsPerStep = max(1, charsPerStep)
+        }
+        if let baseDuration {
+            self.baseDuration = max(0.001, baseDuration)
+        }
+        if let elementGapDuration {
+            self.elementGapDuration = max(0, elementGapDuration)
+        }
+    }
 
     func enqueue(view: UIView, isRoot: Bool = true) {
         if isRoot {

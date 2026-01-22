@@ -55,6 +55,15 @@ class ViewController: UIViewController {
         return button
     }()
 
+    private lazy var aiChatButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.setTitle("AI 对话", for: .normal)
+        button.titleLabel?.font = .systemFont(ofSize: 18, weight: .medium)
+        button.addTarget(self, action: #selector(openAIChatDemo), for: .touchUpInside)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        return button
+    }()
+
     override func viewDidLoad() {
         super.viewDidLoad()
         DispatchQueue.global().async {
@@ -71,6 +80,7 @@ class ViewController: UIViewController {
         view.addSubview(crashReproButton)
         view.addSubview(smartStreamingButton)
         view.addSubview(smartStreamingCellButton)
+        view.addSubview(aiChatButton)
         NSLayoutConstraint.activate([
             titleLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             titleLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
@@ -89,7 +99,10 @@ class ViewController: UIViewController {
             smartStreamingButton.topAnchor.constraint(equalTo: crashReproButton.bottomAnchor, constant: 20),
 
             smartStreamingCellButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            smartStreamingCellButton.topAnchor.constraint(equalTo: smartStreamingButton.bottomAnchor, constant: 20)
+            smartStreamingCellButton.topAnchor.constraint(equalTo: smartStreamingButton.bottomAnchor, constant: 20),
+
+            aiChatButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            aiChatButton.topAnchor.constraint(equalTo: smartStreamingCellButton.bottomAnchor, constant: 20)
 
         ])
     }
@@ -120,6 +133,12 @@ class ViewController: UIViewController {
 
     @objc private func openSmartStreamingCellDemo() {
         let vc = SmartStreamingCellDemoViewController()
+        vc.modalPresentationStyle = .fullScreen
+        self.present(vc, animated: true, completion: nil)
+    }
+
+    @objc private func openAIChatDemo() {
+        let vc = AIChatViewController()
         vc.modalPresentationStyle = .fullScreen
         self.present(vc, animated: true, completion: nil)
     }
