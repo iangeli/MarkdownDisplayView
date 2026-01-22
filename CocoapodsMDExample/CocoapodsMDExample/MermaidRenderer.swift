@@ -126,6 +126,7 @@ final class MermaidWebView: UIView, WKNavigationDelegate, WKScriptMessageHandler
     private var lastReportedHeight: CGFloat = 0
     private var maxHeightForToken: CGFloat = 0
     private var renderToken = UUID()
+    private var pendingLayoutUpdate = false
 
     init(code: String, frame: CGRect) {
         self.code = code
@@ -235,7 +236,27 @@ final class MermaidWebView: UIView, WKNavigationDelegate, WKScriptMessageHandler
         heightConstraint?.constant = adjustedHeight
         invalidateIntrinsicContentSize()
         setNeedsLayout()
-        layoutIfNeeded()
+        scheduleParentLayoutUpdate()
+    }
+
+    private func scheduleParentLayoutUpdate() {
+        guard !pendingLayoutUpdate else { return }
+        pendingLayoutUpdate = true
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            pendingLayoutUpdate = false
+
+            var current: UIView? = self
+            while let view = current?.superview {
+                if let markdownView = view as? MarkdownViewTextKit {
+                    markdownView.setNeedsLayout()
+                    markdownView.layoutIfNeeded()
+                    return
+                }
+                current = view
+            }
+        }
     }
 
     private func generateMermaidHTML(code: String) -> String {
@@ -348,6 +369,6 @@ public extension MarkdownCustomExtensionManager {
     /// 注册 Mermaid 渲染器
     func registerMermaidRenderer() {
         register(codeBlockRenderer: MermaidRenderer())
-        print("✅ [Mermaid] Mermaid renderer registered")
+        //print("✅ [Mermaid] Mermaid renderer registered")
     }
 }

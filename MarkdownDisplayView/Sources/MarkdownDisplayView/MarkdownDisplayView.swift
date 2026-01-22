@@ -349,6 +349,18 @@ public final class MarkdownViewTextKit: UIView {
         }
         return nil
     }
+
+    /// 判断是否嵌入在可复用的列表单元格中（UITableView/UICollectionView）
+    private func isEmbeddedInReusableCell() -> Bool {
+        var superview = self.superview
+        while let view = superview {
+            if view is UITableViewCell || view is UICollectionViewCell {
+                return true
+            }
+            superview = view.superview
+        }
+        return false
+    }
     
     public func scrollToTOCItem(_ item: MarkdownTOCItem) {
         guard let view = headingViews[item.id] else { return }
@@ -1470,7 +1482,7 @@ public final class MarkdownViewTextKit: UIView {
 
         // ⚡️ 首屏优化：判断是否启用分批渲染
         // 条件：非流式模式 + 元素数量 > 5（避免过少内容也分批）
-        let shouldUseBatchRendering = !isStreaming && newElements.count > 5
+        let shouldUseBatchRendering = !isStreaming && newElements.count > 5 && !isEmbeddedInReusableCell()
 
         // 🔍 诊断日志
         if perfStartTime > 0 {

@@ -43,6 +43,7 @@ class ViewController: UIViewController {
             FontLoader.ensureFontsRegistered()
         }
         let titleLabel = UILabel()
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
         titleLabel.font = .systemFont(ofSize: 18, weight: .semibold)
         titleLabel.text = "MarkdownDisplayKit Demo"
         titleLabel.backgroundColor = .systemBackground

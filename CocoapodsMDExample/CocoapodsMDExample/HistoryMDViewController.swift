@@ -15,6 +15,7 @@ final class HistoryMDViewController: UIViewController {
     private var cachedHeights: [Int: CGFloat] = [:]
     private let cellVerticalPadding: CGFloat = 24
     private let firstRowExtraPadding: CGFloat = 12
+    private let initialPlaceholderRowHeightMultiplier: CGFloat = 3
 
     private var pendingHeightUpdateRows = Set<Int>()
     private var isHeightUpdateScheduled = false
@@ -162,6 +163,7 @@ extension HistoryMDViewController: UITableViewDataSource, UITableViewDelegate {
             guard let currentIndexPath = tableView.indexPath(for: cell) else { return }
             let row = currentIndexPath.row
             guard row < self.messages.count else { return }
+            guard contentHeight > 1 else { return }
 
             let extraPadding = row == 0 ? self.firstRowExtraPadding : 0
             let newRowHeight = contentHeight + self.cellVerticalPadding + extraPadding
@@ -177,7 +179,11 @@ extension HistoryMDViewController: UITableViewDataSource, UITableViewDelegate {
     }
 
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        cachedHeights[indexPath.row] ?? tableView.estimatedRowHeight
+        if let cachedHeight = cachedHeights[indexPath.row] {
+            return cachedHeight
+        }
+        let viewHeight = view.bounds.height > 0 ? view.bounds.height : UIScreen.main.bounds.height
+        return max(tableView.estimatedRowHeight, viewHeight * initialPlaceholderRowHeightMultiplier)
     }
 }
 
@@ -207,11 +213,13 @@ final class MarkdownHistoryCell: UITableViewCell {
         }
 
         contentView.addSubview(markdownView)
+        let bottomConstraint = markdownView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -12)
+        bottomConstraint.priority = .defaultHigh
         NSLayoutConstraint.activate([
             markdownView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 12),
             markdownView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
             markdownView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-            markdownView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -12)
+            bottomConstraint
         ])
     }
 

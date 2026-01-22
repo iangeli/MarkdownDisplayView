@@ -426,7 +426,7 @@ class ChatMarkdownCell: UITableViewCell {
             self.isCurrentlyStreaming = false
             self.realStreamCompletion?()
             self.realStreamCompletion = nil
-            print("[FOOTNOTE_DEBUG] 🔴 Cell.endRealStreaming completion called")
+            //print("[FOOTNOTE_DEBUG] 🔴 Cell.endRealStreaming completion called")
         }
     }
 
@@ -522,7 +522,7 @@ class TableViewStreamingViewController: UIViewController {
     }
     
     @objc private func stopStreaming() {
-        print("[FOOTNOTE_DEBUG] ⛔️ stopStreaming button pressed!")
+        //print("[FOOTNOTE_DEBUG] ⛔️ stopStreaming button pressed!")
         // 停止真流式
         stopRealStream()
 
@@ -632,7 +632,7 @@ class TableViewStreamingViewController: UIViewController {
             blocks.append(currentBlock)
         }
 
-        print("📦 [RealStream] Split markdown into \(blocks.count) blocks")
+        //print("📦 [RealStream] Split markdown into \(blocks.count) blocks")
         return blocks
     }
 
@@ -714,7 +714,7 @@ class TableViewStreamingViewController: UIViewController {
                         self.messages[botIndexPath.row].content = aiResponseText
                         self.messages[botIndexPath.row].isStreaming = false
                         self.isSending = true
-                        print("✅ [RealStream] Streaming completed!")
+                        //print("✅ [RealStream] Streaming completed!")
                     }
                 )
 
@@ -732,7 +732,7 @@ class TableViewStreamingViewController: UIViewController {
 
     /// 启动真流式定时器
     private func startRealStreamTimer() {
-        print("[FOOTNOTE_DEBUG] ⏰ startRealStreamTimer called, blocks.count=\(realStreamBlocks.count), blockIndex=\(realStreamBlockIndex)")
+        //print("[FOOTNOTE_DEBUG] ⏰ startRealStreamTimer called, blocks.count=\(realStreamBlocks.count), blockIndex=\(realStreamBlockIndex)")
 
         // 每 0.3 秒发送一个块，模拟网络数据到达
         realStreamTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: true) { [weak self] timer in
@@ -741,27 +741,27 @@ class TableViewStreamingViewController: UIViewController {
                 return
             }
 
-            print("[FOOTNOTE_DEBUG] ⏰ Timer fired, blockIndex=\(self.realStreamBlockIndex), blocks.count=\(self.realStreamBlocks.count), cell=\(self.realStreamCell != nil ? "exists" : "nil")")
+            //print("[FOOTNOTE_DEBUG] ⏰ Timer fired, blockIndex=\(self.realStreamBlockIndex), blocks.count=\(self.realStreamBlocks.count), cell=\(self.realStreamCell != nil ? "exists" : "nil")")
 
             if self.realStreamBlockIndex < self.realStreamBlocks.count {
                 let block = self.realStreamBlocks[self.realStreamBlockIndex]
                 self.realStreamCell?.appendBlock(block)
-                print("📤 [RealStream] Sent block \(self.realStreamBlockIndex + 1)/\(self.realStreamBlocks.count)")
+                //print("📤 [RealStream] Sent block \(self.realStreamBlockIndex + 1)/\(self.realStreamBlocks.count)")
                 self.realStreamBlockIndex += 1
             } else {
                 // 所有块发送完毕
-                print("[FOOTNOTE_DEBUG] ⏰ Timer ending, calling endRealStreaming")
+                //print("[FOOTNOTE_DEBUG] ⏰ Timer ending, calling endRealStreaming")
                 timer.invalidate()
                 self.realStreamTimer = nil
                 self.realStreamCell?.endRealStreaming()
-                print("🏁 [RealStream] All blocks sent, ending stream")
+                //print("🏁 [RealStream] All blocks sent, ending stream")
             }
         }
     }
 
     /// 停止真流式
     private func stopRealStream() {
-        print("[FOOTNOTE_DEBUG] ⛔️ stopRealStream called!")
+        //print("[FOOTNOTE_DEBUG] ⛔️ stopRealStream called!")
         realStreamTimer?.invalidate()
         realStreamTimer = nil
         smartStreamTimer?.invalidate()
@@ -842,7 +842,7 @@ class TableViewStreamingViewController: UIViewController {
                         self.messages[botIndexPath.row].content = aiResponseText
                         self.messages[botIndexPath.row].isStreaming = false
                         self.isSending = true
-                        print("✅ [SmartStream] Streaming completed!")
+                        //print("✅ [SmartStream] Streaming completed!")
                     }
                 )
 
@@ -863,7 +863,7 @@ class TableViewStreamingViewController: UIViewController {
 
     /// 启动智能流式定时器（模拟逐字符/逐块网络数据到达）
     private func startSmartStreamTimer() {
-        print("[SmartStream] ⏰ Starting smart stream timer, fullText.count=\(smartStreamFullText.count)")
+        //print("[SmartStream] ⏰ Starting smart stream timer, fullText.count=\(smartStreamFullText.count)")
         hasSimulatedNetworkStall = false  // 重置标记
         startActualSmartStreamTimer()
     }
@@ -887,14 +887,14 @@ class TableViewStreamingViewController: UIViewController {
                 let progress = Double(currentIndex) / Double(fullText.count)
                 if !self.hasSimulatedNetworkStall && progress >= 0.1 {
                     self.hasSimulatedNetworkStall = true  // 标记已触发
-                    print("[SmartStream] ⏳ Simulating 4s network stall at 10% progress...")
+                    //print("[SmartStream] ⏳ Simulating 4s network stall at 10% progress...")
                     timer.invalidate()
                     self.smartStreamTimer = nil
 
                     // 4 秒后恢复
                     DispatchQueue.main.asyncAfter(deadline: .now() + 8.0) { [weak self] in
                         guard let self = self else { return }
-                        print("[SmartStream] ⏳ Network recovered, resuming...")
+                        //print("[SmartStream] ⏳ Network recovered, resuming...")
                         self.startActualSmartStreamTimer()
                     }
                     return
@@ -911,16 +911,16 @@ class TableViewStreamingViewController: UIViewController {
                 // ⭐️ 使用 appendStreamData 而不是 appendBlock
                 // 让 SmartBuffer 自动检测完整模块
                 self.realStreamCell?.appendStreamData(chunk)
-                print("📤 [SmartStream] Sent chunk: \(chunk.count) chars, progress: \(Int(progress * 100))%")
+                //print("📤 [SmartStream] Sent chunk: \(chunk.count) chars, progress: \(Int(progress * 100))%")
 
                 self.smartStreamCharIndex = endIndex
             } else {
                 // 所有数据发送完毕
-                print("[SmartStream] ⏰ Timer ending, calling endRealStreaming")
+                //print("[SmartStream] ⏰ Timer ending, calling endRealStreaming")
                 timer.invalidate()
                 self.smartStreamTimer = nil
                 self.realStreamCell?.endRealStreaming()
-                print("🏁 [SmartStream] All data sent, ending stream")
+                //print("🏁 [SmartStream] All data sent, ending stream")
             }
         }
     }
