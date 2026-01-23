@@ -41,6 +41,21 @@ A powerful iOS Markdown rendering component built on TextKit 2, providing smooth
 
 - Chat with AI model
 
+Config.local.json structure:
+
+```jsonc
+// {
+//   "host": "https://api.deepseek.com",
+//   "path": "/chat/completions",
+//   "apiKey": "",
+//   "model": "deepseek-chat",
+//   "systemPrompt": "You are a helpful assistant.",
+//   "temperature": 0.7,
+//   "stream": true,
+//   "timeoutSeconds": 30
+// }
+```
+
 ![AIChat](./Effects/ChatWithAIModel.gif)
 
 ## Features

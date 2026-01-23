@@ -29,7 +29,7 @@ let package = Package(
             path: "MarkdownDisplayView/Sources/MarkdownDisplayView",
             resources: [
                 // KaTeX 字体文件
-                .copy("Resources")
+                .process("Resources")
             ],
             swiftSettings: [
                 // SPM自动定义SWIFT_PACKAGE,我们不需要额外设置

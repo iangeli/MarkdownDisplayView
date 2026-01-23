@@ -40,7 +40,22 @@
 ![Streaming Rendering](./Effects/streaming.gif)
 
 - 与AI大模型对话
-    
+
+Config.local.json 结构如下：
+
+```jsonc
+// {
+//   "host": "https://api.deepseek.com",
+//   "path": "/chat/completions",
+//   "apiKey": "",
+//   "model": "deepseek-chat",
+//   "systemPrompt": "You are a helpful assistant.",
+//   "temperature": 0.7,
+//   "stream": true,
+//   "timeoutSeconds": 30
+// }
+```
+
 ![AIChat](./Effects/ChatWithAIModel.gif)
 
 ## 特性

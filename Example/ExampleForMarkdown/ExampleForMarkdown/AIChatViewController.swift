@@ -6,7 +6,7 @@
 //
 
 import UIKit
-import MarkdownDisplayKit
+import MarkdownDisplayView
 
 enum ChatRole: String, Codable {
     case user

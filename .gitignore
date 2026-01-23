@@ -4,3 +4,4 @@
 # SPM build artifacts
 .build/
 .swiftpm/
+Example/ExampleForMarkdown/ExampleForMarkdown/Config.local.json
