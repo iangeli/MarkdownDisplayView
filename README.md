@@ -4,15 +4,46 @@
 
 A powerful iOS Markdown rendering component built on TextKit 2, providing smooth rendering performance and rich customization options. It also enables the streaming rendering of Markdown format in AI question-and-answer scenarios.
 
+## Contents
+
+- [Effects Showcase](#effects-showcase)
+- [Demo Effects](#demo-effects)
+- [Features](#features)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Custom Configuration](#custom-configuration)
+- [Table of Contents](#table-of-contents)
+- [Supported Markdown Syntax](#supported-markdown-syntax)
+- [Complete Example](#complete-example)
+- [Performance Optimization](#performance-optimization)
+- [Advanced Usage](#advanced-usage)
+- [Custom Extensions](#custom-extensions)
+- [Troubleshooting](#troubleshooting)
+- [Changelog](#changelog)
+- [Contributing](#contributing)
+- [License](#license)
+- [Author](#author)
+- [Acknowledgments](#acknowledgments)
+- [Contact](#contact)
+
+## Effects Showcase
+
 ## Demo Effects
 
 ### Normal Rendering
 ![Normal Rendering](./Effects/normal.gif)
 
 ### Streaming Rendering
+- Simulated streaming
+
 ![Streaming Rendering](./Effects/streaming.gif)
 
-## ✨ Features
+- Chat with AI model
+
+![AIChat](./Effects/ChatWithAIModel.gif)
+
+## Features
 - 🚀 **High-Performance Rendering** — Based on TextKit 2, supports asynchronous rendering, incremental updates, streaming rendering, etc. **Instant loading** with ultra-fast first screen rendering.
 - ⚡ **Low CPU Usage** — Streaming mode supports nested style rendering with CPU peak < 56% on iPhone 17 Pro simulator, averaging only 30%.
 - 🎨 **Full Markdown Support** — Formula of LaTeX protocol, Headings, lists, tables, code blocks, blockquotes, images, and more.
@@ -24,12 +55,12 @@ A powerful iOS Markdown rendering component built on TextKit 2, providing smooth
 - 📱 **Native iOS** — Built with UIKit and TextKit 2 for excellent performance.
 - 🌓 **Dark Mode** — Built-in light and dark theme configurations.
 
-## 📋 Requirements
+## Requirements
 - iOS 15.0+ (due to TextKit 2 requirement)
 - Swift 5.9+
 - Xcode 16.0+
 
-## 📦 Installation
+## Installation
 ### Swift Package Manager
 #### Method 1: Add via Xcode
 1. Open your project in Xcode.
@@ -41,7 +72,7 @@ A powerful iOS Markdown rendering component built on TextKit 2, providing smooth
 Add the dependency in `Package.swift`:
 ```swift
 dependencies: [
-    .package(url: "https://github.com/zjc19891106/MarkdownDisplayView.git", from: "1.0.0")
+    .package(url: "https://github.com/zjc19891106/MarkdownDisplayView.git", from: "1.5.8")
 ]
 ```
 
@@ -60,7 +91,7 @@ pod install
 
 **Note**: MarkdownDisplayKit depends on `swift-markdown` for Markdown parsing. Since `swift-markdown` is not yet available on CocoaPods trunk, you need to add it from the GitHub source as shown above.
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Basic Usage
 
@@ -129,7 +160,7 @@ markdownView.onImageTap = { imageURL in
 }
 ```
 
-## 🎨 Custom Configuration
+## Custom Configuration
 
 ### Using Preset Themes
 
@@ -211,7 +242,7 @@ public var imageMaxHeight: CGFloat         // Maximum image height
 public var imagePlaceholderHeight: CGFloat // Image placeholder height
 ```
 
-## 📑 Table of Contents
+## Table of Contents
 
 ### Get Auto-Generated TOC
 
@@ -243,7 +274,7 @@ markdownView.onTOCItemTap = { item in
 }
 ```
 
-## 🎯 Supported Markdown Syntax
+## Supported Markdown Syntax
 
 ### Headings
 
@@ -365,7 +396,7 @@ This is text with a footnote[^1]
 [^1]: This is the footnote content
 ```
 
-## 📱 Complete Example
+## Complete Example
 
 Check out the complete example project in the `Example/ExampleForMarkdown` directory, which includes:
 
@@ -381,7 +412,7 @@ cd Example/ExampleForMarkdown
 open ExampleForMarkdown.xcodeproj
 ```
 
-## ⚡️ Performance Optimization
+## Performance Optimization
 
 - **Asynchronous Rendering** - Markdown parsing and rendering execute in background queue, not blocking the main thread
 - **Incremental Updates** - Uses Diff algorithm, only updates changed parts
@@ -389,7 +420,7 @@ open ExampleForMarkdown.xcodeproj
 - **Regex Caching** - Syntax highlighting regex expressions are cached and reused
 - **View Reuse** - Efficient view update strategy
 
-## 🔧 Advanced Usage
+## Advanced Usage
 
 ### Using Core View Directly (Without Scrolling)
 
@@ -509,7 +540,7 @@ class ChatViewController: UIViewController {
 - **Incremental Rendering**: Renders complete modules immediately while buffering incomplete content
 - **Typewriter Effect**: Smooth character-by-character animation for rendered content
 
-## 🔌 Custom Extensions
+## Custom Extensions
 
 MarkdownDisplayKit supports custom extensions to add your own Markdown syntax and rendering.
 
@@ -677,7 +708,7 @@ manager.register(codeBlockRenderer: MermaidRenderer())
 - Gantt Chart (gantt)
 - Mind Map (mindmap)
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### 1. Build Error: Cannot find UIKit
 
@@ -705,7 +736,7 @@ manager.register(codeBlockRenderer: MermaidRenderer())
 
 **Solution**: Library is built with Swift 5.9 to avoid strict concurrency checking
 
-## 📝 Changelog
+## Changelog
 
 ### 1.5.2 (2026-01-08)
 
@@ -749,7 +780,7 @@ manager.register(codeBlockRenderer: MermaidRenderer())
 - ✅ Dark mode support
 - ✅ High-performance asynchronous rendering
 
-## 🤝 Contributing
+## Contributing
 
 Issues and Pull Requests are welcome!
 
@@ -759,13 +790,14 @@ Before submitting a PR, please ensure:
 - Follows existing code style
 - Adds necessary tests
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 👨‍💻 Author
+## Author
 
 MarkdownDisplayView is created and maintained by [@zjc19891106](https://github.com/zjc19891106).
+If this library saved you time, consider supporting me. Thanks to everyone who has supported me so far.
 
 - Support the author
 - WeChat
@@ -776,20 +808,33 @@ MarkdownDisplayView is created and maintained by [@zjc19891106](https://github.c
 
   ![](Support/paypal.png)
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - [swift-markdown](https://github.com/swiftlang/swift-markdown) - Markdown parsing library
 - [KaTeX](https://github.com/KaTeX/KaTeX) - Math formula rendering fonts
 - Apple TextKit 2 - High-performance text rendering framework
 - Gemini3 Pro&Claude&Grok&GPT
 - All contributors and users
+- All friends who provided suggestions and feedback
 
-## 📮 Contact
+## Contact
 
 If you have questions or suggestions, please contact via:
 
 - Submit [GitHub Issue](https://github.com/zjc19891106/MarkdownDisplayView/issues)
 - Send email to: 984065974@qq.com or luomobancheng@gmail.com
+
+- QQ Group
+![QQ Group](./Communication/qq.jpeg)
+
+- WeChat Group
+![WeChat Group](./Communication/wechat.jpeg)
+
+- Telegram
+![Telegram](./Communication/telegram.jpeg)
+
+- Discord
+![Discord](./Communication/discord.jpeg)
 
 ---
 

@@ -2,19 +2,48 @@
 
 一个功能强大的 iOS Markdown 渲染组件，基于 TextKit 2 构建，提供流畅的渲染性能和丰富的自定义选项。同时也支持AI问答流式渲染md格式。
 
+## 目录
+
+- [效果展示](#效果展示)
+- [Demo 效果](#demo-效果)
+- [特性](#特性)
+- [系统要求](#系统要求)
+- [安装](#安装)
+- [快速开始](#快速开始)
+- [自定义配置](#自定义配置)
+- [目录功能](#目录功能)
+- [支持的 Markdown 语法](#支持的-markdown-语法)
+- [完整示例](#完整示例)
+- [性能优化](#性能优化)
+- [高级用法](#高级用法)
+- [自定义扩展](#自定义扩展)
+- [故障排除](#故障排除)
+- [更新日志](#更新日志)
+- [贡献](#贡献)
+- [许可证](#许可证)
+- [作者](#作者)
+- [致谢](#致谢)
+- [联系方式](#联系方式)
+
 ## 效果展示
 
-## Demo Effects
+## Demo 效果
 
-### Normal Rendering
+### 正常渲染（整页秒开）
 
 ![Normal Rendering](./Effects/normal.gif)
 
-### Streaming Rendering
+### 流式渲染
+
+- 模拟流式
 
 ![Streaming Rendering](./Effects/streaming.gif)
 
-## ✨ 特性
+- 与AI大模型对话
+    
+![AIChat](./Effects/ChatWithAIModel.gif)
+
+## 特性
 
 - 🚀 **高性能渲染** - 基于 TextKit 2，支持异步渲染和增量更新，流式渲染等，**秒开加载**，首屏渲染极速完成
 - ⚡ **低 CPU 占用** - 流式模式下支持嵌套样式展示，iPhone 17 Pro 模拟器上 CPU 峰值 < 56%，平均仅 30%
@@ -27,13 +56,13 @@
 - 📱 **iOS 原生** - 使用 UIKit 和 TextKit 2 构建，性能优异
 - 🌓 **深色模式** - 内置浅色和深色主题配置
 
-## 📋 系统要求
+## 系统要求
 
 - iOS 15.0+(TextKit2 要求)
 - Swift 5.9+
 - Xcode 16.0+
 
-## 📦 安装
+## 安装
 
 ### Swift Package Manager
 
@@ -50,7 +79,7 @@
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/zjc19891106/MarkdownDisplayView.git", from: "1.3.0")
+    .package(url: "https://github.com/zjc19891106/MarkdownDisplayView.git", from: "1.5.8")
 ]
 ```
 
@@ -78,7 +107,7 @@ pod 'MarkdownDisplayKit'
 pod install
 ```
 
-## 🚀 快速开始
+## 快速开始
 
 ### 基础用法
 
@@ -147,7 +176,7 @@ markdownView.onImageTap = { imageURL in
 }
 ```
 
-## 🎨 自定义配置
+## 自定义配置
 
 ### 使用预设主题
 
@@ -229,7 +258,7 @@ public var imageMaxHeight: CGFloat         // 图片最大高度
 public var imagePlaceholderHeight: CGFloat // 图片占位符高度
 ```
 
-## 📑 目录功能
+## 目录功能
 
 ### 获取自动生成的目录
 
@@ -261,7 +290,7 @@ markdownView.onTOCItemTap = { item in
 }
 ```
 
-## 🎯 支持的 Markdown 语法
+## 支持的 Markdown 语法
 
 ### 标题
 
@@ -383,7 +412,7 @@ ___
 [^1]: 这是脚注内容
 ```
 
-## 📱 完整示例
+## 完整示例
 
 查看 `Example/ExampleForMarkdown` 目录下的完整示例项目，包含：
 
@@ -399,7 +428,7 @@ cd Example/ExampleForMarkdown
 open ExampleForMarkdown.xcodeproj
 ```
 
-## ⚡️ 性能优化
+## 性能优化
 
 - **异步渲染** - Markdown 解析和渲染在后台队列执行，不阻塞主线程
 - **增量更新** - 使用 Diff 算法，只更新变化的部分
@@ -407,7 +436,7 @@ open ExampleForMarkdown.xcodeproj
 - **正则缓存** - 语法高亮正则表达式缓存复用
 - **视图复用** - 高效的视图更新策略
 
-## 🔧 高级用法
+## 高级用法
 
 ### 直接使用核心视图（无滚动）
 
@@ -527,7 +556,7 @@ class ChatViewController: UIViewController {
 - **增量渲染**：完整模块立即渲染，未完成内容继续缓冲等待
 - **打字机效果**：渲染内容平滑的逐字显示动画
 
-## 🔌 自定义扩展
+## 自定义扩展
 
 MarkdownDisplayKit 支持自定义扩展，可以添加自己的 Markdown 语法和渲染。
 
@@ -695,7 +724,7 @@ manager.register(codeBlockRenderer: MermaidRenderer())
 - 甘特图 (gantt)
 - 思维导图 (mindmap)
 
-## 🐛 故障排除
+## 故障排除
 
 ### 1. 编译错误：找不到 UIKit
 
@@ -723,7 +752,7 @@ manager.register(codeBlockRenderer: MermaidRenderer())
 
 **解决方案**：库已使用 Swift 5.9 构建，避免严格并发检查
 
-## 📝 更新日志
+## 更新日志
 
 ### 1.5.2 (2026-01-08)
 
@@ -767,7 +796,7 @@ manager.register(codeBlockRenderer: MermaidRenderer())
 - ✅ 深色模式支持
 - ✅ 高性能异步渲染
 
-## 🤝 贡献
+## 贡献
 
 欢迎提交 Issue 和 Pull Request！
 
@@ -777,13 +806,14 @@ manager.register(codeBlockRenderer: MermaidRenderer())
 - 遵循现有代码风格
 - 添加必要的测试
 
-## 📄 许可证
+## 许可证
 
 本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件。
 
-## 👨‍💻 作者
+## 作者
 
 MarkdownDisplayView 由 [@zjc19891106](https://github.com/zjc19891106) 创建和维护。
+如果觉得这个库帮到你的忙节省了你的时间，可以考虑支持一下我，感谢所有打赏支持我的朋友们，这里就不一一点名了！您的支持有助于作者的长期维护与改进。
 
 - 支持作者
 - WeChat
@@ -791,23 +821,36 @@ MarkdownDisplayView 由 [@zjc19891106](https://github.com/zjc19891106) 创建和
 - AliPay
   ![](Support/alipay.jpg)
 - Paypal
-
   ![](Support/paypal.png)
 
-## 🙏 致谢
+## 致谢
 
 - [swift-markdown](https://github.com/swiftlang/swift-markdown) - Markdown 解析库
 - [KaTeX](https://github.com/KaTeX/KaTeX) - 数学公式渲染字体
 - Apple TextKit 2 - 高性能文本渲染框架
 - Gemini3 Pro&Claude&Grok&GPT
 - 所有贡献者和使用者
+- 所有给我提供建议和反馈的朋友们
 
-## 📮 联系方式
+
+## 联系方式
 
 如有问题或建议，请通过以下方式联系：
 
 - 提交 [GitHub Issue](https://github.com/zjc19891106/MarkdownDisplayView/issues)
 - 发送邮件至：984065974@qq.com 或 luomobancheng@gmail.com
+
+- QQ 群 
+![QQ群](./Communication/qq.jpeg) 
+
+- 微信群
+![微信群](./Communication/wechat.jpeg)
+
+- Telegram
+![Telegram](./Communication/telegram.jpeg)
+
+- Discord
+![Discord](./Communication/discord.jpeg)
 
 ---
 
