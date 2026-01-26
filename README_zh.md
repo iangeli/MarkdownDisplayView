@@ -94,7 +94,7 @@ Config.local.json 结构如下：
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/zjc19891106/MarkdownDisplayView.git", from: "1.5.8")
+    .package(url: "https://github.com/zjc19891106/MarkdownDisplayView.git", from: "1.5.9")
 ]
 ```
 
@@ -778,6 +778,18 @@ manager.register(codeBlockRenderer: MermaidRenderer())
 **解决方案**：库已使用 Swift 5.9 构建，避免严格并发检查
 
 ## 更新日志
+
+### 1.5.9 (2026-01-26)
+
+- 🚀 **打字机追加模式** - 新增 `.append` 模式，并对高度更新节流，减少 Cell 流式输出时的布局跳变
+- ⚙️ **流式配置项** - 提供 `typewriterTextMode`、`typewriterHeightUpdateInterval`、`streamMinModuleLength`
+- 🧹 **内存清理** - 增加缓存清理与 Mermaid WebView 释放逻辑，降低页面退出后的驻留内存
+- 🧪 **示例更新** - AI 对话流式 LaTeX 规范化更安全（忽略代码区域），并给出推荐配置
+
+### 1.5.8 (2026-01-23)
+
+- 📝 **文档更新** - 更新 README 内容
+- 🐛 **SPM 修复** - 修复 Swift Package Manager 示例在模拟器上的编译问题
 
 ### 1.5.2 (2026-01-08)
 

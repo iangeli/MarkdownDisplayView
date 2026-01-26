@@ -87,7 +87,7 @@ Config.local.json structure:
 Add the dependency in `Package.swift`:
 ```swift
 dependencies: [
-    .package(url: "https://github.com/zjc19891106/MarkdownDisplayView.git", from: "1.5.8")
+    .package(url: "https://github.com/zjc19891106/MarkdownDisplayView.git", from: "1.5.9")
 ]
 ```
 
@@ -762,6 +762,18 @@ manager.register(codeBlockRenderer: MermaidRenderer())
 **Solution**: Library is built with Swift 5.9 to avoid strict concurrency checking
 
 ## Changelog
+
+### 1.5.9 (2026-01-26)
+
+- 🚀 **Typewriter Append** - Add `.append` mode with throttled height updates to reduce layout jumps during cell streaming
+- ⚙️ **Streaming Config** - Expose `typewriterTextMode`, `typewriterHeightUpdateInterval`, `streamMinModuleLength`
+- 🧹 **Memory Cleanup** - Add cache clearing helpers and Mermaid WebView cleanup to reduce retained memory
+- 🧪 **Example Update** - AI chat stream uses safer LaTeX normalization (code regions ignored) and recommended config
+
+### 1.5.8 (2026-01-23)
+
+- 📝 **Docs Update** - Refresh README content
+- 🐛 **SPM Fix** - Fix simulator build error in Swift Package Manager example project
 
 ### 1.5.2 (2026-01-08)
 
