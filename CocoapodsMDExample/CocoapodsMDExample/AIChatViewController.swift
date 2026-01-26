@@ -274,6 +274,7 @@ final class AIChatViewController: UIViewController {
     private var activeTask: URLSessionDataTask?
     private let responseLogLimit = 400
     private var streamLatexCarry = ""
+    private var receivedText = ""
 
     private let inputContainer = UIView()
     private let inputTextView = UITextView()
@@ -634,6 +635,7 @@ final class AIChatViewController: UIViewController {
     }
 
     private func finishStream() {
+        print("[AIChat][Stream][Complete] Total received chars: \(receivedText)")
         isRequesting = false
         sendButton.isEnabled = true
 
@@ -703,6 +705,7 @@ final class AIChatViewController: UIViewController {
     }
 
     private func logStreamDelta(_ delta: String) {
+        self.receivedText.append(delta)
         logServerText(delta, category: "stream", limit: nil)
     }
 
@@ -823,7 +826,9 @@ final class AIChatMessageCell: UITableViewCell {
         bubbleView.layer.cornerRadius = 12
         bubbleView.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(bubbleView)
-
+        var config = MarkdownConfiguration.default
+        config.streamMinModuleLength = 10
+        markdownView.configuration = config
         markdownView.enableTypewriterEffect = false
         markdownView.translatesAutoresizingMaskIntoConstraints = false
         markdownView.onHeightChange = { [weak self] _ in

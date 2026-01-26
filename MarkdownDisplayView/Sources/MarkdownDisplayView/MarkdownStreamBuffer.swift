@@ -45,10 +45,7 @@ final class MarkdownStreamBuffer {
     private var moduleBoundaries: [Int] = []
 
     /// 最小模块长度（防止过于频繁的模块检测）
-    private let minModuleLength: Int = 50
-
-    /// 配置
-    private let configuration: MarkdownConfiguration
+    private var minModuleLength: Int
 
     /// 容器宽度
     private var containerWidth: CGFloat
@@ -63,9 +60,9 @@ final class MarkdownStreamBuffer {
 
     // MARK: - Init
 
-    init(configuration: MarkdownConfiguration, containerWidth: CGFloat) {
-        self.configuration = configuration
+    init(containerWidth: CGFloat, minModuleLength: Int) {
         self.containerWidth = containerWidth
+        self.minModuleLength = max(1, minModuleLength)
     }
 
     // MARK: - Public Methods
@@ -82,6 +79,11 @@ final class MarkdownStreamBuffer {
     /// 更新容器宽度
     func updateContainerWidth(_ width: CGFloat) {
         self.containerWidth = width
+    }
+
+    /// 更新最小模块长度
+    func updateMinModuleLength(_ length: Int) {
+        minModuleLength = max(1, length)
     }
 
     /// 追加新到达的文本数据

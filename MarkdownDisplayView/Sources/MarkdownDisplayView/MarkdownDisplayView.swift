@@ -51,7 +51,10 @@ public final class MarkdownViewTextKit: UIView {
     }
     
     public var configuration: MarkdownConfiguration = .default {
-        didSet { scheduleRerender() }
+        didSet {
+            streamBuffer.updateMinModuleLength(configuration.streamMinModuleLength)
+            scheduleRerender()
+        }
     }
     
     public var markdown: String = "" {
@@ -224,8 +227,8 @@ public final class MarkdownViewTextKit: UIView {
     /// 流式缓存器实例
     private lazy var streamBuffer: MarkdownStreamBuffer = {
         let buffer = MarkdownStreamBuffer(
-            configuration: configuration,
-            containerWidth: bounds.width > 0 ? bounds.width : UIScreen.main.bounds.width - 32
+            containerWidth: bounds.width > 0 ? bounds.width : UIScreen.main.bounds.width - 32,
+            minModuleLength: configuration.streamMinModuleLength
         )
         // ⭐️ 移除回调绑定：等待动画现在只在流式开始/结束时控制
         // 避免频繁的状态变化导致 UI 闪烁
@@ -5297,6 +5300,7 @@ public final class MarkdownViewTextKit: UIView {
 
             let elapsed = (CFAbsoluteTimeGetCurrent() - self.streamingStartTimestamp) * 1000
             print("✅ [RealStream] Completed in \(String(format: "%.1f", elapsed))ms")
+            print("Full text is:\n\(self.realStreamAccumulatedText)")
         }
 
         // ⭐️ 关键检查：如果 TypewriterEngine 已经空闲，直接执行收尾逻辑
