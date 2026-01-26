@@ -163,6 +163,191 @@ private struct OpenAIStreamResponse: Decodable {
     let choices: [Choice]?
 }
 
+private final class StreamMarkdownNormalizer {
+    private var pendingBackslash = false
+    private var pendingBackticks = 0
+    private var pendingDollars = 0
+    private var inCodeFence = false
+    private var inlineCodeDelimiterCount: Int?
+
+    func reset() {
+        pendingBackslash = false
+        pendingBackticks = 0
+        pendingDollars = 0
+        inCodeFence = false
+        inlineCodeDelimiterCount = nil
+    }
+
+    func normalizeDelta(_ delta: String) -> String {
+        process(delta, flushPending: false)
+    }
+
+    func normalizeFullText(_ text: String) -> String {
+        reset()
+        return process(text, flushPending: true)
+    }
+
+    func flush() -> String {
+        process("", flushPending: true)
+    }
+
+    private var isInCodeRegion: Bool {
+        inCodeFence || inlineCodeDelimiterCount != nil
+    }
+
+    private func process(_ input: String, flushPending: Bool) -> String {
+        var output = ""
+        var index = input.startIndex
+
+        if pendingBackslash {
+            if index < input.endIndex {
+                let first = input[index]
+                if !isInCodeRegion, isLatexDelimiter(first) {
+                    output += latexReplacement(for: first)
+                    index = input.index(after: index)
+                } else {
+                    output += "\\"
+                }
+                pendingBackslash = false
+            } else if flushPending {
+                output += "\\"
+                pendingBackslash = false
+            } else {
+                return ""
+            }
+        }
+
+        let prefix = String(repeating: "`", count: pendingBackticks)
+            + String(repeating: "$", count: pendingDollars)
+        pendingBackticks = 0
+        pendingDollars = 0
+
+        let remaining = input[index...]
+        let text = prefix + remaining
+
+        var cursor = text.startIndex
+        while cursor < text.endIndex {
+            let current = text[cursor]
+
+            if current == "`" {
+                var end = cursor
+                while end < text.endIndex, text[end] == "`" {
+                    end = text.index(after: end)
+                }
+                let count = text.distance(from: cursor, to: end)
+
+                if end == text.endIndex, !flushPending {
+                    pendingBackticks = count
+                    break
+                }
+
+                handleBackticks(count, output: &output)
+                cursor = end
+                continue
+            }
+
+            if current == "$" {
+                var end = cursor
+                while end < text.endIndex, text[end] == "$" {
+                    end = text.index(after: end)
+                }
+                let count = text.distance(from: cursor, to: end)
+
+                if end == text.endIndex, !flushPending {
+                    pendingDollars = count
+                    break
+                }
+
+                output += String(repeating: "$", count: count)
+                cursor = end
+                continue
+            }
+
+            if current == "\\" {
+                let nextIndex = text.index(after: cursor)
+                if nextIndex == text.endIndex {
+                    if flushPending {
+                        output += "\\"
+                    } else {
+                        pendingBackslash = true
+                    }
+                    break
+                }
+
+                let nextChar = text[nextIndex]
+                if !isInCodeRegion, isLatexDelimiter(nextChar) {
+                    output += latexReplacement(for: nextChar)
+                    cursor = text.index(after: nextIndex)
+                } else {
+                    output += "\\"
+                    cursor = nextIndex
+                }
+                continue
+            }
+
+            output.append(current)
+            cursor = text.index(after: cursor)
+        }
+
+        if flushPending {
+            if pendingBackticks > 0 {
+                output += String(repeating: "`", count: pendingBackticks)
+                pendingBackticks = 0
+            }
+            if pendingDollars > 0 {
+                output += String(repeating: "$", count: pendingDollars)
+                pendingDollars = 0
+            }
+            if pendingBackslash {
+                output += "\\"
+                pendingBackslash = false
+            }
+        }
+
+        return output
+    }
+
+    private func handleBackticks(_ count: Int, output: inout String) {
+        if inCodeFence {
+            if count >= 3 {
+                inCodeFence = false
+            }
+            output += String(repeating: "`", count: count)
+            return
+        }
+
+        if let inlineCount = inlineCodeDelimiterCount {
+            if count == inlineCount {
+                inlineCodeDelimiterCount = nil
+            }
+            output += String(repeating: "`", count: count)
+            return
+        }
+
+        if count >= 3 {
+            inCodeFence = true
+        } else {
+            inlineCodeDelimiterCount = count
+        }
+        output += String(repeating: "`", count: count)
+    }
+
+    private func isLatexDelimiter(_ char: Character) -> Bool {
+        char == "(" || char == ")" || char == "[" || char == "]"
+    }
+
+    private func latexReplacement(for delimiter: Character) -> String {
+        switch delimiter {
+        case "(", ")":
+            return "$"
+        case "[", "]":
+            return "$$"
+        default:
+            return "\\"
+        }
+    }
+}
+
 private final class AIChatStreamSession: NSObject, URLSessionDataDelegate {
     private let request: URLRequest
     private let onDelta: (String) -> Void
@@ -273,7 +458,7 @@ final class AIChatViewController: UIViewController {
     private var streamSession: AIChatStreamSession?
     private var activeTask: URLSessionDataTask?
     private let responseLogLimit = 400
-    private var streamLatexCarry = ""
+    private let streamNormalizer = StreamMarkdownNormalizer()
 
     private let inputContainer = UIView()
     private let inputTextView = UITextView()
@@ -473,7 +658,7 @@ final class AIChatViewController: UIViewController {
 
         let willStream = config?.stream ?? false
         if willStream {
-            streamLatexCarry = ""
+            streamNormalizer.reset()
         }
         appendMessage(role: .user, content: text)
         inputTextView.text = ""
@@ -575,7 +760,7 @@ final class AIChatViewController: UIViewController {
             let decoded = try JSONDecoder().decode(OpenAIChatResponse.self, from: data)
             if let message = decoded.choices?.first?.message?.content, !message.isEmpty {
                 logServerText(message, category: "response", limit: responseLogLimit)
-                let normalized = normalizeLatexDelimiters(message)
+                let normalized = StreamMarkdownNormalizer().normalizeFullText(message)
                 updatePendingMessage(with: normalized)
                 return
             }
@@ -592,7 +777,7 @@ final class AIChatViewController: UIViewController {
     }
 
     private func startStreamRequest(_ request: URLRequest) {
-        streamLatexCarry = ""
+        streamNormalizer.reset()
         streamSession?.cancel()
         streamSession = AIChatStreamSession(
             request: request,
@@ -617,7 +802,7 @@ final class AIChatViewController: UIViewController {
 
     private func handleStreamDelta(_ delta: String) {
         guard let index = streamingAssistantIndex, messages.indices.contains(index) else { return }
-        let normalizedDelta = normalizeStreamDelta(delta)
+        let normalizedDelta = streamNormalizer.normalizeDelta(delta)
         messages[index].content.append(normalizedDelta)
         logStreamDelta(delta)
 
@@ -638,11 +823,11 @@ final class AIChatViewController: UIViewController {
         sendButton.isEnabled = true
 
         guard let index = streamingAssistantIndex, messages.indices.contains(index) else { return }
-        if !streamLatexCarry.isEmpty {
-            messages[index].content.append(streamLatexCarry)
-            streamLatexCarry = ""
+        let remaining = streamNormalizer.flush()
+        if !remaining.isEmpty {
+            messages[index].content.append(remaining)
         }
-        messages[index].content = normalizeLatexDelimiters(messages[index].content)
+        messages[index].content = StreamMarkdownNormalizer().normalizeFullText(messages[index].content)
         messages[index].isStreaming = false
         let indexPath = IndexPath(row: index, section: 0)
         if let cell = tableView.cellForRow(at: indexPath) as? AIChatMessageCell {
@@ -657,7 +842,7 @@ final class AIChatViewController: UIViewController {
     private func failStream(message: String) {
         isRequesting = false
         sendButton.isEnabled = true
-        streamLatexCarry = ""
+        streamNormalizer.reset()
         if let index = streamingAssistantIndex,
            let cell = tableView.cellForRow(at: IndexPath(row: index, section: 0)) as? AIChatMessageCell {
             cell.endStreaming()
@@ -669,7 +854,7 @@ final class AIChatViewController: UIViewController {
     private func cancelActiveRequest(showMessage: Bool) {
         streamSession?.cancel()
         streamSession = nil
-        streamLatexCarry = ""
+        streamNormalizer.reset()
 
         if let task = activeTask {
             task.cancel()
@@ -706,29 +891,6 @@ final class AIChatViewController: UIViewController {
         logServerText(delta, category: "stream", limit: nil)
     }
 
-    private func normalizeLatexDelimiters(_ text: String) -> String {
-        var output = text
-        output = output.replacingOccurrences(of: "\\(", with: "$")
-        output = output.replacingOccurrences(of: "\\)", with: "$")
-        output = output.replacingOccurrences(of: "\\[", with: "$$")
-        output = output.replacingOccurrences(of: "\\]", with: "$$")
-        return output
-    }
-
-    private func normalizeStreamDelta(_ delta: String) -> String {
-        var combined = streamLatexCarry + delta
-        streamLatexCarry = ""
-
-        if !combined.isEmpty {
-            let trailingBackslashes = combined.reversed().prefix(while: { $0 == "\\" }).count
-            if trailingBackslashes % 2 == 1 {
-                streamLatexCarry = "\\"
-                combined.removeLast()
-            }
-        }
-
-        return normalizeLatexDelimiters(combined)
-    }
 
     @discardableResult
     private func appendMessage(role: ChatRole, content: String, isPlaceholder: Bool = false, isStreaming: Bool = false) -> Int {
@@ -823,7 +985,12 @@ final class AIChatMessageCell: UITableViewCell {
         bubbleView.layer.cornerRadius = 12
         bubbleView.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(bubbleView)
-
+        
+        var config = MarkdownConfiguration.default
+        config.typewriterTextMode = .append
+        config.typewriterHeightUpdateInterval = 20
+        config.streamMinModuleLength = 20
+        markdownView.configuration = config
         markdownView.enableTypewriterEffect = false
         markdownView.translatesAutoresizingMaskIntoConstraints = false
         markdownView.onHeightChange = { [weak self] _ in

@@ -2587,6 +2587,8 @@ public final class MarkdownViewTextKit: UIView {
 
         let textView = MarkdownTextViewTK2()
         textView.attributedText = attributedString
+        textView.typewriterTextMode = .reveal
+        textView.typewriterHeightUpdateInterval = configuration.typewriterHeightUpdateInterval
         textView.backgroundColor = .clear
         textView.translatesAutoresizingMaskIntoConstraints = false
         // [CODEBLOCK_DEBUG] 添加标识符
@@ -2641,6 +2643,8 @@ public final class MarkdownViewTextKit: UIView {
             
             let textView = MarkdownTextViewTK2()
             textView.attributedText = mutableAttrString
+            textView.typewriterTextMode = configuration.typewriterTextMode
+            textView.typewriterHeightUpdateInterval = configuration.typewriterHeightUpdateInterval
             textView.linkTextAttributes = [
                 .foregroundColor: configuration.linkColor,
                 .underlineStyle: NSUnderlineStyle.single.rawValue,
@@ -2657,7 +2661,11 @@ public final class MarkdownViewTextKit: UIView {
             // 计算文本实际可用的宽度（减去内边距）
             let contentWidth = width - insets.left - insets.right
             if contentWidth > 0 {
-                if let fixedHeight = fixedHeight {
+                let useAppendTypewriter = enableTypewriterEffect && configuration.typewriterTextMode == .append
+                if useAppendTypewriter {
+                    textView.textContainer.size = CGSize(width: contentWidth, height: .greatestFiniteMagnitude)
+                    textView.setFixedHeight(1)
+                } else if let fixedHeight = fixedHeight {
                     // ⚡️ 使用预计算高度，跳过主线程布局计算
                     textView.textContainer.size = CGSize(width: contentWidth, height: .greatestFiniteMagnitude)
                     textView.setFixedHeight(fixedHeight)

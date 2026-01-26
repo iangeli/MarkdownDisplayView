@@ -550,6 +550,16 @@ class ChatViewController: UIViewController {
 }
 ```
 
+Recommended configuration for streaming AI chat in table/collection cells:
+
+```Swift
+var config = MarkdownConfiguration.default
+config.typewriterTextMode = .append
+config.typewriterHeightUpdateInterval = 20
+config.streamMinModuleLength = 20
+scrollableMarkdownView.markdownView.configuration = config
+```
+
 **Key Features**:
 - **Smart Buffering**: Automatically buffers incomplete Markdown structures (unclosed code blocks, tables, LaTeX)
 - **Incremental Rendering**: Renders complete modules immediately while buffering incomplete content

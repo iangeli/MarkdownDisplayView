@@ -566,6 +566,16 @@ class ChatViewController: UIViewController {
 }
 ```
 
+用于 Table/Collection Cell 的 AI 对话流式推荐配置：
+
+```Swift
+var config = MarkdownConfiguration.default
+config.typewriterTextMode = .append
+config.typewriterHeightUpdateInterval = 20
+config.streamMinModuleLength = 20
+scrollableMarkdownView.markdownView.configuration = config
+```
+
 **核心特性**：
 - **智能缓冲**：自动缓冲未完成的 Markdown 结构（未闭合的代码块、表格、LaTeX 公式）
 - **增量渲染**：完整模块立即渲染，未完成内容继续缓冲等待

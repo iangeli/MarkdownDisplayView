@@ -34,6 +34,12 @@ class MarkdownTextViewTK2: UIView {
     // ⭐️ 管理自定义附件视图（如表格）
     private var attachmentProviders: [NSTextAttachment: NSTextAttachmentViewProvider] = [:]
 
+    var typewriterTextMode: MarkdownTypewriterTextMode = .reveal
+    var typewriterHeightUpdateInterval: Int = 20
+
+    private var lastHeightUpdateIndex: Int = 0
+    private var cachedOriginalAttributedString: NSAttributedString?
+
     override init(frame: CGRect) {
         textContentStorage = NSTextContentStorage()
         textLayoutManager = NSTextLayoutManager()
@@ -365,10 +371,22 @@ extension MarkdownTextViewTK2 {
 
         // ⭐️ 重置显示位置
         lastRevealedIndex = 0
+        lastHeightUpdateIndex = 0
+        cachedOriginalAttributedString = attr
 
         // ⚡️ 强制触发布局，确保高度和位置在开始打字前是正确的
         // 这能防止在 hidden = false 瞬间因为布局未完成而导致的闪烁或跳动
         layoutIfNeeded()
+
+        if typewriterTextMode == .append {
+            let mutable = NSMutableAttributedString()
+            cachedMutableString = mutable
+            textContentStorage.attributedString = mutable
+            textLayoutManager.ensureLayout(for: textLayoutManager.documentRange)
+            setNeedsDisplay()
+            print("[TYPEWRITER] 🎯 prepareForTypewriter 完成 (append)")
+            return
+        }
 
         // 初始化缓存
         let mutable = NSMutableAttributedString(attributedString: attr)
@@ -396,23 +414,66 @@ extension MarkdownTextViewTK2 {
     }
 
     /// 揭示前 N 个字符（支持批量显示）
-    func revealCharacter(upto index: Int) {
-        guard let originalAttr = attributedText, // 原始带颜色的文本
-              let workingAttr = cachedMutableString,
-              index > 0 else {
+    func revealCharacter(upto index: Int) -> Bool {
+        guard index > 0 else { return false }
+
+        if typewriterTextMode == .append {
+            guard let originalAttr = cachedOriginalAttributedString else {
+                return false
+            }
+
+            let length = originalAttr.length
+            if index > length { return false }
+
+            let startIndex = lastRevealedIndex
+            let endIndex = index
+            guard endIndex > startIndex else { return false }
+
+            let range = NSRange(location: startIndex, length: endIndex - startIndex)
+            let segment = originalAttr.attributedSubstring(from: range)
+
+            let workingAttr = cachedMutableString ?? NSMutableAttributedString()
+            workingAttr.append(segment)
+            cachedMutableString = workingAttr
+
+            lastRevealedIndex = endIndex
+            textContentStorage.attributedString = workingAttr
+
+            let interval = max(1, typewriterHeightUpdateInterval)
+            let shouldUpdateLayout = segment.string.contains("\n")
+                || (endIndex - lastHeightUpdateIndex) >= interval
+                || endIndex >= length
+
+            if shouldUpdateLayout {
+                lastHeightUpdateIndex = endIndex
+                let layoutWidth = textContainer.size.width > 0 ? textContainer.size.width : bounds.width
+                if layoutWidth > 0 {
+                    applyLayout(width: layoutWidth, force: true)
+                } else {
+                    setNeedsLayout()
+                }
+                return true
+            }
+
+            setNeedsDisplay()
+            return false
+        }
+
+        guard let originalAttr = attributedText,
+              let workingAttr = cachedMutableString else {
             print("[TYPEWRITER] ⚠️ revealCharacter 提前返回: attributedText=\(attributedText != nil), cachedMutableString=\(cachedMutableString != nil), index=\(index)")
-            return
+            return false
         }
 
         let length = originalAttr.length
-        if index > length { return }
+        if index > length { return false }
 
         // ⭐️ 批量支持：从上次位置到当前位置，显示所有字符
         let startIndex = lastRevealedIndex
         let endIndex = index
 
         // 如果没有新字符需要显示，直接返回
-        guard endIndex > startIndex else { return }
+        guard endIndex > startIndex else { return false }
 
         // 遍历需要显示的每个字符，恢复其原始属性
         for charIndex in startIndex..<endIndex {
@@ -434,5 +495,6 @@ extension MarkdownTextViewTK2 {
 
         // 强制重绘
         setNeedsDisplay()
+        return false
     }
 }

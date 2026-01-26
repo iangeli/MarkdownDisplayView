@@ -55,6 +55,11 @@ struct MarkdownFootnote: Equatable {
     let content: String
 }
 
+public enum MarkdownTypewriterTextMode: Sendable {
+    case reveal
+    case append
+}
+
 // MARK: - MarkdownConfiguration
 public struct MarkdownConfiguration: Sendable {
     
@@ -91,6 +96,8 @@ public struct MarkdownConfiguration: Sendable {
     public var imageMaxHeight: CGFloat
     public var imagePlaceholderHeight: CGFloat
     public var streamMinModuleLength: Int = 50
+    public var typewriterTextMode: MarkdownTypewriterTextMode = .reveal
+    public var typewriterHeightUpdateInterval: Int = 20
     
     
     public var headingTopSpacing: CGFloat       // 标题上方间距（标题与前一个内容之间的距离）
@@ -131,6 +138,8 @@ public struct MarkdownConfiguration: Sendable {
             imageMaxHeight: 400,
             imagePlaceholderHeight: 150,
             streamMinModuleLength: 50,
+            typewriterTextMode: .reveal,
+            typewriterHeightUpdateInterval: 20,
             headingTopSpacing: 20,                  // 推荐：标题前留大一点空
             headingBottomSpacing: 12,               // 标题后稍小一点
             paragraphTopSpacing: 8,                 // 普通段落前留一点空

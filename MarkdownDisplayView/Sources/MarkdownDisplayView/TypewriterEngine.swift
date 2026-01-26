@@ -233,7 +233,9 @@ class TypewriterEngine {
         switch task {
         case .text(let textView):
             if let len = textView.attributedText?.length {
-                textView.revealCharacter(upto: len)
+                if textView.revealCharacter(upto: len) {
+                    onLayoutChange?()
+                }
             }
         case .block(let view):
             view.layer.removeAllAnimations()
@@ -353,7 +355,7 @@ class TypewriterEngine {
             let textPreview = textView.attributedText?.string.prefix(30) ?? ""
             print("[TYPEWRITER] 📝 开始执行 .text 任务, 文本长度: \(textLen), 内容: \(textPreview)...")
             if textLen == 0 {
-                textView.revealCharacter(upto: 0)
+                _ = textView.revealCharacter(upto: 0)
                 finishCurrentTask()
             } else {
                 typeNextCharacter(textView, currentIndex: 0, token: token)
@@ -373,14 +375,18 @@ class TypewriterEngine {
         }
 
         if currentIndex >= totalLen {
-            textView.revealCharacter(upto: totalLen)
+            if textView.revealCharacter(upto: totalLen) {
+                onLayoutChange?()
+            }
             finishCurrentTask()
             return
         }
 
         // ⭐️ 优化：批量显示字符（每次显示 charsPerStep 个）
         let nextIndex = min(currentIndex + charsPerStep, totalLen)
-        textView.revealCharacter(upto: nextIndex)
+        if textView.revealCharacter(upto: nextIndex) {
+            onLayoutChange?()
+        }
 
         let delay = calculateDelay(at: currentIndex, text: textView.attributedText?.string ?? "")
 
