@@ -1,7 +1,5 @@
 # 在 git archive 时排除示例和辅助文件
-CocoapodsMDExample/ export-ignore
 Effects/ export-ignore
-Example/ export-ignore
 Support/ export-ignore
 Sources/ export-ignore
 README.md export-ignore
