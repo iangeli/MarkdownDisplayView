@@ -1202,12 +1202,12 @@ final class MarkdownParser: MarkdownParserProtocol {
             .font: configuration.codeFont,
             .foregroundColor: configuration.codeTextColor,
         ], range: fullRange)
-        
+
         let lang = language?.lowercased() ?? ""
-        
-        // Xcode 风格颜色
-        let colors = SyntaxColors.xcode
-        
+
+        // 使用配置中的代码高亮颜色
+        let colors = configuration.syntaxColors
+
         // 根据语言应用高亮
         switch lang {
         case "swift":
@@ -1244,46 +1244,8 @@ final class MarkdownParser: MarkdownParserProtocol {
             // 通用高亮
             highlightGeneric(result, colors: colors)
         }
-        
-        return result
-    }
 
-    // Xcode 风格配色
-    private struct SyntaxColors {
-        let keyword: UIColor
-        let string: UIColor
-        let number: UIColor
-        let comment: UIColor
-        let type: UIColor
-        let function: UIColor
-        let property: UIColor
-        let preprocessor: UIColor
-        
-        static var xcode: SyntaxColors {
-            return SyntaxColors(
-                keyword: UIColor(red: 0.78, green: 0.24, blue: 0.59, alpha: 1.0),      // 紫红色 #C73E95
-                string: UIColor(red: 0.84, green: 0.19, blue: 0.16, alpha: 1.0),       // 红色 #D63129
-                number: UIColor(red: 0.11, green: 0.27, blue: 0.53, alpha: 1.0),       // 深蓝色 #1C4587
-                comment: UIColor(red: 0.42, green: 0.47, blue: 0.50, alpha: 1.0),      // 灰色 #6B787F
-                type: UIColor(red: 0.11, green: 0.43, blue: 0.55, alpha: 1.0),         // 青色 #1C6E8C
-                function: UIColor(red: 0.26, green: 0.40, blue: 0.55, alpha: 1.0),     // 蓝色 #42668C
-                property: UIColor(red: 0.26, green: 0.40, blue: 0.55, alpha: 1.0),     // 蓝色
-                preprocessor: UIColor(red: 0.54, green: 0.36, blue: 0.20, alpha: 1.0)  // 棕色 #8A5C33
-            )
-        }
-        
-        static var xcodeDark: SyntaxColors {
-            return SyntaxColors(
-                keyword: UIColor(red: 0.99, green: 0.42, blue: 0.64, alpha: 1.0),      // 粉色 #FC6BA3
-                string: UIColor(red: 0.99, green: 0.42, blue: 0.36, alpha: 1.0),       // 橙红 #FC6B5C
-                number: UIColor(red: 0.82, green: 0.75, blue: 0.50, alpha: 1.0),       // 黄色 #D1BF80
-                comment: UIColor(red: 0.51, green: 0.55, blue: 0.52, alpha: 1.0),      // 灰绿 #828C85
-                type: UIColor(red: 0.39, green: 0.80, blue: 0.79, alpha: 1.0),         // 青色 #63CCC9
-                function: UIColor(red: 0.40, green: 0.72, blue: 0.89, alpha: 1.0),     // 浅蓝 #66B8E3
-                property: UIColor(red: 0.40, green: 0.72, blue: 0.89, alpha: 1.0),
-                preprocessor: UIColor(red: 0.99, green: 0.65, blue: 0.40, alpha: 1.0)  // 橙色 #FCA666
-            )
-        }
+        return result
     }
 
     private func applyPattern(_ pattern: String, to attrString: NSMutableAttributedString, color: UIColor, options: NSRegularExpression.Options = []) {
@@ -1308,7 +1270,7 @@ final class MarkdownParser: MarkdownParserProtocol {
 
     // MARK: - Language Specific Highlighting
 
-    private func highlightSwift(_ attrString: NSMutableAttributedString, colors: SyntaxColors) {
+    private func highlightSwift(_ attrString: NSMutableAttributedString, colors: SyntaxHighlightColors) {
         let keywords = [
             "import", "class", "struct", "enum", "protocol", "extension", "func", "var", "let",
             "if", "else", "guard", "switch", "case", "default", "for", "while", "repeat",
@@ -1338,7 +1300,7 @@ final class MarkdownParser: MarkdownParserProtocol {
         applyPattern("/\\*[\\s\\S]*?\\*/", to: attrString, color: colors.comment)
     }
 
-    private func highlightObjC(_ attrString: NSMutableAttributedString, colors: SyntaxColors) {
+    private func highlightObjC(_ attrString: NSMutableAttributedString, colors: SyntaxHighlightColors) {
         let keywords = [
             "if", "else", "for", "while", "do", "switch", "case", "default", "break", "continue",
             "return", "goto", "typedef", "struct", "enum", "union", "sizeof", "static", "extern",
@@ -1369,7 +1331,7 @@ final class MarkdownParser: MarkdownParserProtocol {
         applyPattern("/\\*[\\s\\S]*?\\*/", to: attrString, color: colors.comment)
     }
 
-    private func highlightJavaScript(_ attrString: NSMutableAttributedString, colors: SyntaxColors) {
+    private func highlightJavaScript(_ attrString: NSMutableAttributedString, colors: SyntaxHighlightColors) {
         let keywords = [
             "var", "let", "const", "function", "return", "if", "else", "for", "while", "do",
             "switch", "case", "default", "break", "continue", "try", "catch", "finally", "throw",
@@ -1396,7 +1358,7 @@ final class MarkdownParser: MarkdownParserProtocol {
         applyPattern("/\\*[\\s\\S]*?\\*/", to: attrString, color: colors.comment)
     }
 
-    private func highlightPython(_ attrString: NSMutableAttributedString, colors: SyntaxColors) {
+    private func highlightPython(_ attrString: NSMutableAttributedString, colors: SyntaxHighlightColors) {
         let keywords = [
             "def", "class", "if", "elif", "else", "for", "while", "try", "except", "finally",
             "with", "as", "import", "from", "return", "yield", "raise", "pass", "break",
@@ -1424,7 +1386,7 @@ final class MarkdownParser: MarkdownParserProtocol {
         applyPattern("#.*$", to: attrString, color: colors.comment, options: .anchorsMatchLines)
     }
 
-    private func highlightJava(_ attrString: NSMutableAttributedString, colors: SyntaxColors) {
+    private func highlightJava(_ attrString: NSMutableAttributedString, colors: SyntaxHighlightColors) {
         let keywords = [
             "public", "private", "protected", "class", "interface", "enum", "extends", "implements",
             "static", "final", "abstract", "synchronized", "volatile", "transient", "native",
@@ -1452,7 +1414,7 @@ final class MarkdownParser: MarkdownParserProtocol {
         applyPattern("/\\*[\\s\\S]*?\\*/", to: attrString, color: colors.comment)
     }
 
-    private func highlightGo(_ attrString: NSMutableAttributedString, colors: SyntaxColors) {
+    private func highlightGo(_ attrString: NSMutableAttributedString, colors: SyntaxHighlightColors) {
         let keywords = [
             "break", "case", "chan", "const", "continue", "default", "defer", "else", "fallthrough",
             "for", "func", "go", "goto", "if", "import", "interface", "map", "package", "range",
@@ -1474,7 +1436,7 @@ final class MarkdownParser: MarkdownParserProtocol {
         applyPattern("/\\*[\\s\\S]*?\\*/", to: attrString, color: colors.comment)
     }
 
-    private func highlightRust(_ attrString: NSMutableAttributedString, colors: SyntaxColors) {
+    private func highlightRust(_ attrString: NSMutableAttributedString, colors: SyntaxHighlightColors) {
         let keywords = [
             "as", "break", "const", "continue", "crate", "else", "enum", "extern", "false", "fn",
             "for", "if", "impl", "in", "let", "loop", "match", "mod", "move", "mut", "pub", "ref",
@@ -1501,7 +1463,7 @@ final class MarkdownParser: MarkdownParserProtocol {
         applyPattern("/\\*[\\s\\S]*?\\*/", to: attrString, color: colors.comment)
     }
 
-    private func highlightCpp(_ attrString: NSMutableAttributedString, colors: SyntaxColors) {
+    private func highlightCpp(_ attrString: NSMutableAttributedString, colors: SyntaxHighlightColors) {
         let keywords = [
             "auto", "break", "case", "char", "const", "continue", "default", "do", "double", "else",
             "enum", "extern", "float", "for", "goto", "if", "int", "long", "register", "return",
@@ -1527,7 +1489,7 @@ final class MarkdownParser: MarkdownParserProtocol {
         applyPattern("/\\*[\\s\\S]*?\\*/", to: attrString, color: colors.comment)
     }
 
-    private func highlightRuby(_ attrString: NSMutableAttributedString, colors: SyntaxColors) {
+    private func highlightRuby(_ attrString: NSMutableAttributedString, colors: SyntaxHighlightColors) {
         let keywords = [
             "def", "class", "module", "end", "if", "elsif", "else", "unless", "case", "when",
             "while", "until", "for", "do", "begin", "rescue", "ensure", "raise", "return",
@@ -1551,7 +1513,7 @@ final class MarkdownParser: MarkdownParserProtocol {
         applyPattern("#.*$", to: attrString, color: colors.comment, options: .anchorsMatchLines)
     }
 
-    private func highlightJSON(_ attrString: NSMutableAttributedString, colors: SyntaxColors) {
+    private func highlightJSON(_ attrString: NSMutableAttributedString, colors: SyntaxHighlightColors) {
         // 键
         applyPattern("\"[^\"]+\"\\s*:", to: attrString, color: colors.property)
         
@@ -1565,7 +1527,7 @@ final class MarkdownParser: MarkdownParserProtocol {
         applyPattern("\\b-?\\d+\\.?\\d*([eE][+-]?\\d+)?\\b", to: attrString, color: colors.number)
     }
 
-    private func highlightHTML(_ attrString: NSMutableAttributedString, colors: SyntaxColors) {
+    private func highlightHTML(_ attrString: NSMutableAttributedString, colors: SyntaxHighlightColors) {
         // 标签
         applyPattern("</?\\w+", to: attrString, color: colors.keyword)
         applyPattern("/?>", to: attrString, color: colors.keyword)
@@ -1581,7 +1543,7 @@ final class MarkdownParser: MarkdownParserProtocol {
         applyPattern("<!--[\\s\\S]*?-->", to: attrString, color: colors.comment)
     }
 
-    private func highlightCSS(_ attrString: NSMutableAttributedString, colors: SyntaxColors) {
+    private func highlightCSS(_ attrString: NSMutableAttributedString, colors: SyntaxHighlightColors) {
         // 选择器
         applyPattern("[.#]?[a-zA-Z_][a-zA-Z0-9_-]*\\s*\\{", to: attrString, color: colors.keyword)
         
@@ -1598,7 +1560,7 @@ final class MarkdownParser: MarkdownParserProtocol {
         applyPattern("/\\*[\\s\\S]*?\\*/", to: attrString, color: colors.comment)
     }
 
-    private func highlightSQL(_ attrString: NSMutableAttributedString, colors: SyntaxColors) {
+    private func highlightSQL(_ attrString: NSMutableAttributedString, colors: SyntaxHighlightColors) {
         let keywords = [
             "SELECT", "FROM", "WHERE", "AND", "OR", "NOT", "IN", "LIKE", "BETWEEN", "IS", "NULL",
             "INSERT", "INTO", "VALUES", "UPDATE", "SET", "DELETE", "CREATE", "TABLE", "DROP",
@@ -1624,7 +1586,7 @@ final class MarkdownParser: MarkdownParserProtocol {
         applyPattern("/\\*[\\s\\S]*?\\*/", to: attrString, color: colors.comment)
     }
 
-    private func highlightShell(_ attrString: NSMutableAttributedString, colors: SyntaxColors) {
+    private func highlightShell(_ attrString: NSMutableAttributedString, colors: SyntaxHighlightColors) {
         let keywords = [
             "if", "then", "else", "elif", "fi", "case", "esac", "for", "while", "until", "do", "done",
             "in", "function", "return", "exit", "break", "continue", "export", "local", "readonly",
@@ -1644,7 +1606,7 @@ final class MarkdownParser: MarkdownParserProtocol {
         applyPattern("#.*$", to: attrString, color: colors.comment, options: .anchorsMatchLines)
     }
 
-    private func highlightYAML(_ attrString: NSMutableAttributedString, colors: SyntaxColors) {
+    private func highlightYAML(_ attrString: NSMutableAttributedString, colors: SyntaxHighlightColors) {
         // 键
         applyPattern("^\\s*[\\w-]+(?=\\s*:)", to: attrString, color: colors.property, options: .anchorsMatchLines)
         
@@ -1662,7 +1624,7 @@ final class MarkdownParser: MarkdownParserProtocol {
         applyPattern("#.*$", to: attrString, color: colors.comment, options: .anchorsMatchLines)
     }
 
-    private func highlightGeneric(_ attrString: NSMutableAttributedString, colors: SyntaxColors) {
+    private func highlightGeneric(_ attrString: NSMutableAttributedString, colors: SyntaxHighlightColors) {
         // 通用关键词
         let keywords = [
             "if", "else", "for", "while", "do", "switch", "case", "break", "continue", "return",

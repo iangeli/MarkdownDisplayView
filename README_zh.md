@@ -256,9 +256,13 @@ public var blockquoteTextColor: UIColor                // 引用文本颜色
 public var blockquoteBarColor: UIColor                 // 引用边框颜色
 public var tableBorderColor: UIColor                   // 表格边框颜色
 public var tableHeaderBackgroundColor: UIColor         // 表头背景色
+public var tableRowBackgroundColor: UIColor            // 表格行背景色
 public var tableAlternateRowBackgroundColor: UIColor   // 表格交替行背景色
 public var horizontalRuleColor: UIColor                // 分隔线颜色
 public var imagePlaceholderColor: UIColor              // 图片占位符颜色
+public var footnoteColor: UIColor                      // 脚注颜色
+public var tocTextColor: UIColor                       // 目录文字颜色
+public var detailsSummaryTextColor: UIColor            // 折叠块标题文字颜色
 ```
 
 #### 间距配置
@@ -271,6 +275,74 @@ public var codeBlockPadding: CGFloat       // 代码块内边距
 public var blockquoteIndent: CGFloat       // 引用缩进
 public var imageMaxHeight: CGFloat         // 图片最大高度
 public var imagePlaceholderHeight: CGFloat // 图片占位符高度
+```
+
+#### LaTeX 公式配置
+
+```swift
+public var latexFontSize: CGFloat          // LaTeX 公式字号（默认: 22）
+public var latexAlignment: NSTextAlignment // LaTeX 公式对齐方式（.left, .center, .right）
+public var latexBackgroundColor: UIColor   // LaTeX 公式背景颜色
+public var latexPadding: CGFloat           // LaTeX 公式内边距（默认: 20）
+```
+
+#### 引用块配置
+
+```swift
+public var blockquoteBackgroundColor: UIColor  // 引用块背景颜色
+public var blockquoteBarWidth: CGFloat         // 引用块左侧竖线宽度（默认: 4）
+public var blockquoteContentSpacing: CGFloat   // 引用块内容间距（默认: 8）
+public var blockquoteContentPadding: CGFloat   // 引用块内容内边距（默认: 12）
+```
+
+#### 表格配置
+
+```swift
+public var tableMinColumnWidth: CGFloat    // 表格最小列宽（默认: 80）
+public var tableMaxColumnWidth: CGFloat    // 表格最大列宽（默认: 200）
+public var tableRowHeight: CGFloat         // 表格行高（默认: 44）
+public var tableCellPadding: CGFloat       // 表格单元格内边距（默认: 16）
+public var tableSeparatorHeight: CGFloat   // 表格分隔线高度（默认: 1）
+```
+
+#### 列表配置
+
+```swift
+public var listItemSpacing: CGFloat        // 列表项间距（默认: 4）
+public var listMarkerMinWidth: CGFloat     // 列表标记最小宽度（默认: 20）
+public var listMarkerSpacing: CGFloat      // 列表标记与内容间距（默认: 4）
+```
+
+#### 折叠块（Details）配置
+
+```swift
+public var detailsSummaryFont: UIFont          // 折叠块标题字体
+public var detailsSummaryTextColor: UIColor    // 折叠块标题文字颜色
+public var detailsSummaryMinHeight: CGFloat    // 折叠块标题最小高度（默认: 40）
+public var detailsContentPadding: CGFloat      // 折叠块内容内边距（默认: 12）
+public var detailsSpacing: CGFloat             // 折叠块内部间距（默认: 8）
+```
+
+#### 代码高亮配置
+
+```swift
+public var syntaxColors: SyntaxHighlightColors      // 代码高亮颜色（浅色主题）
+public var syntaxColorsDark: SyntaxHighlightColors  // 代码高亮颜色（深色主题）
+
+// SyntaxHighlightColors 结构体
+public struct SyntaxHighlightColors {
+    public var keyword: UIColor       // 关键字颜色
+    public var string: UIColor        // 字符串颜色
+    public var number: UIColor        // 数字颜色
+    public var comment: UIColor       // 注释颜色
+    public var type: UIColor          // 类型颜色
+    public var function: UIColor      // 函数颜色
+    public var property: UIColor      // 属性颜色
+    public var preprocessor: UIColor  // 预处理器颜色
+
+    public static var xcode: SyntaxHighlightColors      // Xcode 浅色主题
+    public static var xcodeDark: SyntaxHighlightColors  // Xcode 深色主题
+}
 ```
 
 ## 目录功能
@@ -778,6 +850,19 @@ manager.register(codeBlockRenderer: MermaidRenderer())
 **解决方案**：库已使用 Swift 5.9 构建，避免严格并发检查
 
 ## 更新日志
+
+### 1.6.0 (2026-01-30)
+
+- 🎨 **全面配置项支持** - 新增所有 Markdown 元素的详细配置：
+  - **LaTeX 公式**：`latexFontSize`、`latexAlignment`（居左/居中/居右）、`latexBackgroundColor`、`latexPadding`
+  - **引用块**：`blockquoteBackgroundColor`、`blockquoteBarWidth`、`blockquoteContentSpacing`、`blockquoteContentPadding`
+  - **表格**：`tableMinColumnWidth`、`tableMaxColumnWidth`、`tableRowHeight`、`tableCellPadding`、`tableSeparatorHeight`
+  - **列表**：`listItemSpacing`、`listMarkerMinWidth`、`listMarkerSpacing`
+  - **折叠块**：`detailsSummaryFont`、`detailsSummaryTextColor`、`detailsSummaryMinHeight`、`detailsContentPadding`、`detailsSpacing`
+  - **代码高亮**：`syntaxColors`、`syntaxColorsDark`，支持 `SyntaxHighlightColors` 结构体（关键字、字符串、数字、注释、类型、函数、属性、预处理器）
+  - **目录**：`tocTextColor`
+- 🐛 **Bug 修复** - `tableRowBackgroundColor` 现已正确应用于表格行
+- 📝 **文档更新** - 更新 README 完善所有配置选项文档
 
 ### 1.5.9 (2026-01-26)
 

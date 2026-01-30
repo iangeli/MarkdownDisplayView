@@ -992,6 +992,10 @@ final class AIChatMessageCell: UITableViewCell {
         config.typewriterTextMode = .append
         config.typewriterHeightUpdateInterval = 20
         config.streamMinModuleLength = 20
+        
+        config.latexAlignment = .left                // 设置为居左对齐
+        config.latexBackgroundColor = .systemBlue.withAlphaComponent(0.1)  // 设置背景颜色
+        config.latexPadding = 16          
         markdownView.configuration = config
         markdownView.enableTypewriterEffect = false
         markdownView.translatesAutoresizingMaskIntoConstraints = false

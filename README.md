@@ -240,9 +240,13 @@ public var blockquoteTextColor: UIColor                // Blockquote text color
 public var blockquoteBarColor: UIColor                 // Blockquote border color
 public var tableBorderColor: UIColor                   // Table border color
 public var tableHeaderBackgroundColor: UIColor         // Table header background
+public var tableRowBackgroundColor: UIColor            // Table row background
 public var tableAlternateRowBackgroundColor: UIColor   // Table alternate row background
 public var horizontalRuleColor: UIColor                // Horizontal rule color
 public var imagePlaceholderColor: UIColor              // Image placeholder color
+public var footnoteColor: UIColor                      // Footnote color
+public var tocTextColor: UIColor                       // TOC text color
+public var detailsSummaryTextColor: UIColor            // Details summary text color
 ```
 
 #### Spacing Configuration
@@ -255,6 +259,74 @@ public var codeBlockPadding: CGFloat       // Code block padding
 public var blockquoteIndent: CGFloat       // Blockquote indentation
 public var imageMaxHeight: CGFloat         // Maximum image height
 public var imagePlaceholderHeight: CGFloat // Image placeholder height
+```
+
+#### LaTeX Formula Configuration
+
+```swift
+public var latexFontSize: CGFloat          // LaTeX formula font size (default: 22)
+public var latexAlignment: NSTextAlignment // LaTeX formula alignment (.left, .center, .right)
+public var latexBackgroundColor: UIColor   // LaTeX formula background color
+public var latexPadding: CGFloat           // LaTeX formula padding (default: 20)
+```
+
+#### Blockquote Configuration
+
+```swift
+public var blockquoteBackgroundColor: UIColor  // Blockquote background color
+public var blockquoteBarWidth: CGFloat         // Blockquote left bar width (default: 4)
+public var blockquoteContentSpacing: CGFloat   // Blockquote content spacing (default: 8)
+public var blockquoteContentPadding: CGFloat   // Blockquote content padding (default: 12)
+```
+
+#### Table Configuration
+
+```swift
+public var tableMinColumnWidth: CGFloat    // Table minimum column width (default: 80)
+public var tableMaxColumnWidth: CGFloat    // Table maximum column width (default: 200)
+public var tableRowHeight: CGFloat         // Table row height (default: 44)
+public var tableCellPadding: CGFloat       // Table cell padding (default: 16)
+public var tableSeparatorHeight: CGFloat   // Table separator height (default: 1)
+```
+
+#### List Configuration
+
+```swift
+public var listItemSpacing: CGFloat        // List item spacing (default: 4)
+public var listMarkerMinWidth: CGFloat     // List marker minimum width (default: 20)
+public var listMarkerSpacing: CGFloat      // List marker to content spacing (default: 4)
+```
+
+#### Details (Collapsible) Configuration
+
+```swift
+public var detailsSummaryFont: UIFont          // Details summary font
+public var detailsSummaryTextColor: UIColor    // Details summary text color
+public var detailsSummaryMinHeight: CGFloat    // Details summary minimum height (default: 40)
+public var detailsContentPadding: CGFloat      // Details content padding (default: 12)
+public var detailsSpacing: CGFloat             // Details internal spacing (default: 8)
+```
+
+#### Syntax Highlighting Configuration
+
+```swift
+public var syntaxColors: SyntaxHighlightColors      // Syntax highlighting colors (light theme)
+public var syntaxColorsDark: SyntaxHighlightColors  // Syntax highlighting colors (dark theme)
+
+// SyntaxHighlightColors structure
+public struct SyntaxHighlightColors {
+    public var keyword: UIColor       // Keyword color
+    public var string: UIColor        // String color
+    public var number: UIColor        // Number color
+    public var comment: UIColor       // Comment color
+    public var type: UIColor          // Type color
+    public var function: UIColor      // Function color
+    public var property: UIColor      // Property color
+    public var preprocessor: UIColor  // Preprocessor color
+
+    public static var xcode: SyntaxHighlightColors      // Xcode light theme
+    public static var xcodeDark: SyntaxHighlightColors  // Xcode dark theme
+}
 ```
 
 ## Table of Contents
@@ -762,6 +834,19 @@ manager.register(codeBlockRenderer: MermaidRenderer())
 **Solution**: Library is built with Swift 5.9 to avoid strict concurrency checking
 
 ## Changelog
+
+### 1.6.0 (2026-01-30)
+
+- 🎨 **Comprehensive Configuration Options** - Added extensive customization for all Markdown elements:
+  - **LaTeX Formula**: `latexFontSize`, `latexAlignment` (left/center/right), `latexBackgroundColor`, `latexPadding`
+  - **Blockquote**: `blockquoteBackgroundColor`, `blockquoteBarWidth`, `blockquoteContentSpacing`, `blockquoteContentPadding`
+  - **Table**: `tableMinColumnWidth`, `tableMaxColumnWidth`, `tableRowHeight`, `tableCellPadding`, `tableSeparatorHeight`
+  - **List**: `listItemSpacing`, `listMarkerMinWidth`, `listMarkerSpacing`
+  - **Details**: `detailsSummaryFont`, `detailsSummaryTextColor`, `detailsSummaryMinHeight`, `detailsContentPadding`, `detailsSpacing`
+  - **Syntax Highlighting**: `syntaxColors`, `syntaxColorsDark` with `SyntaxHighlightColors` struct (keyword, string, number, comment, type, function, property, preprocessor)
+  - **TOC**: `tocTextColor`
+- 🐛 **Bug Fix** - `tableRowBackgroundColor` now properly applied to table rows
+- 📝 **Documentation** - Updated README with complete configuration options
 
 ### 1.5.9 (2026-01-26)
 

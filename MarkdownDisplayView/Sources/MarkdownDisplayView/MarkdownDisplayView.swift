@@ -429,7 +429,7 @@ public final class MarkdownViewTextKit: UIView {
             
             // 基础样式
             attrString.addAttribute(.font, value: configuration.bodyFont, range: range)
-            attrString.addAttribute(.foregroundColor, value: configuration.linkColor, range: range)
+            attrString.addAttribute(.foregroundColor, value: configuration.tocTextColor, range: range)
             
             // 链接 (Fake Link) - 确保 ID 被正确编码
             if let encodedId = item.id.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed),
@@ -2192,7 +2192,7 @@ public final class MarkdownViewTextKit: UIView {
         // 1. 创建主容器（垂直堆叠每个列表项）
         let container = UIStackView()
         container.axis = .vertical
-        container.spacing = 4 // 列表项之间的间距 (Reduced from 8)
+        container.spacing = configuration.listItemSpacing // 列表项之间的间距
         container.alignment = .fill
         container.translatesAutoresizingMaskIntoConstraints = false
 
@@ -2202,17 +2202,17 @@ public final class MarkdownViewTextKit: UIView {
         // ⭐️ 核心修复：嵌套列表的缩进应该是相对的，而不是基于层级的绝对累加
         // 因为视图本身已经是嵌套的，每层只需要缩进一个单位即可
         let currentIndent = (level > 1) ? indent : 0
-        
+
         // 子元素可用的最大宽度 = 总宽度 - 当前缩进 - 标记宽度(估算20) - 间距
         let contentMaxWidth = max(0, width - currentIndent)
 
         // ⭐️ 预先计算所有标记的最大宽度，确保对齐
         let maxMarkerWidth: CGFloat = {
-            var maxWidth: CGFloat = 20  // 最小宽度
+            var maxWidth: CGFloat = configuration.listMarkerMinWidth  // 最小宽度
             for item in items {
                 let markerText = item.marker as NSString
                 let size = markerText.size(withAttributes: [.font: configuration.bodyFont])
-                maxWidth = max(maxWidth, ceil(size.width) + 4)  // 额外加4pt作为padding
+                maxWidth = max(maxWidth, ceil(size.width) + configuration.listMarkerSpacing)  // 额外加padding
             }
             return maxWidth
         }()
@@ -2223,9 +2223,9 @@ public final class MarkdownViewTextKit: UIView {
             let itemStack = UIStackView()
             itemStack.axis = .horizontal
             itemStack.alignment = .top // 顶部对齐，防止标记跑到中间
-            itemStack.spacing = 4 // (Reduced from 6)
+            itemStack.spacing = configuration.listMarkerSpacing
             itemStack.translatesAutoresizingMaskIntoConstraints = false
-            
+
             // A. 标记 (Bullet point or Number)
             let markerLabel = UILabel()
             markerLabel.text = item.marker
@@ -2237,20 +2237,20 @@ public final class MarkdownViewTextKit: UIView {
             // 使用预计算的最大宽度，确保所有列表项对齐
             markerLabel.widthAnchor.constraint(equalToConstant: maxMarkerWidth).isActive = true
             markerLabel.textAlignment = .right // 数字右对齐更好看
-            
+
             itemStack.addArrangedSubview(markerLabel)
-            
+
             // B. 内容容器 (垂直堆叠：第一行文本 + 后续的代码块/嵌套列表等)
             let contentStack = UIStackView()
             contentStack.axis = .vertical
-            contentStack.spacing = 4 // (Reduced from 6)
+            contentStack.spacing = configuration.listItemSpacing
             contentStack.alignment = .fill
             contentStack.translatesAutoresizingMaskIntoConstraints = false
-            
+
             // ⭐️ 递归核心：遍历 ListItem 的 children 并创建视图
             // 实际内容宽度 = 总宽度 - 标记宽度 - 间距
-            let itemContentWidth = contentMaxWidth - maxMarkerWidth - 4
-            
+            let itemContentWidth = contentMaxWidth - maxMarkerWidth - configuration.listMarkerSpacing
+
             for (index, childElement) in item.children.enumerated() {
                 // 递归调用 createView
                 // 如果是列表项的第一个元素，去除顶部间距，以便跟 Marker 对齐
@@ -2259,11 +2259,11 @@ public final class MarkdownViewTextKit: UIView {
                 let childView = createView(for: childElement, containerWidth: itemContentWidth, suppressTopSpacing: isFirst, suppressBottomSpacing: true)
                 contentStack.addArrangedSubview(childView)
             }
-            
+
             itemStack.addArrangedSubview(contentStack)
             container.addArrangedSubview(itemStack)
         }
-        
+
         // 4. 外层包装 (处理缩进)
         let indentWrapper = UIView()
         indentWrapper.translatesAutoresizingMaskIntoConstraints = false
@@ -2298,10 +2298,10 @@ public final class MarkdownViewTextKit: UIView {
         let attachmentStart = CFAbsoluteTimeGetCurrent()
         let attachment = LaTeXAttachment(
             latex: latex,
-            fontSize: 22,
-            maxWidth: width - 40,  // 留出容器padding
-            padding: 20,
-            backgroundColor: UIColor.systemGray6.withAlphaComponent(0.5)
+            fontSize: configuration.latexFontSize,
+            maxWidth: width - configuration.latexPadding * 2,  // 留出容器padding
+            padding: configuration.latexPadding,
+            backgroundColor: configuration.latexBackgroundColor
         )
         print("[STREAM] 📐 LaTeXAttachment 创建耗时: \(String(format: "%.1f", (CFAbsoluteTimeGetCurrent() - attachmentStart) * 1000))ms")
 
@@ -2318,7 +2318,7 @@ public final class MarkdownViewTextKit: UIView {
 
         // 创建包含附件的富文本
         let paragraphStyle = NSMutableParagraphStyle()
-        paragraphStyle.alignment = .center
+        paragraphStyle.alignment = configuration.latexAlignment
 
         let attachmentString = NSMutableAttributedString(attachment: attachment)
         attachmentString.addAttribute(.paragraphStyle, value: paragraphStyle, range: NSRange(location: 0, length: attachmentString.length))
@@ -2369,10 +2369,10 @@ public final class MarkdownViewTextKit: UIView {
             let fallbackStart = CFAbsoluteTimeGetCurrent()
             formulaView = LatexMathView.createScrollableView(
                 latex: latex,
-                fontSize: 22,
-                maxWidth: width - 40,
-                padding: 20,
-                backgroundColor: UIColor.systemGray6.withAlphaComponent(0.5)
+                fontSize: configuration.latexFontSize,
+                maxWidth: width - configuration.latexPadding * 2,
+                padding: configuration.latexPadding,
+                backgroundColor: configuration.latexBackgroundColor
             )
             print("[STREAM] 📐 回退创建耗时: \(String(format: "%.1f", (CFAbsoluteTimeGetCurrent() - fallbackStart) * 1000))ms")
         }
@@ -2384,19 +2384,30 @@ public final class MarkdownViewTextKit: UIView {
         let sizeCalcStart = CFAbsoluteTimeGetCurrent()
         let formulaSize = LatexMathView.calculateSize(
             latex: latex,
-            fontSize: 22,
-            padding: 20
+            fontSize: configuration.latexFontSize,
+            padding: configuration.latexPadding
         )
         print("[STREAM] 📐 calculateSize 耗时: \(String(format: "%.1f", (CFAbsoluteTimeGetCurrent() - sizeCalcStart) * 1000))ms, 尺寸: \(formulaSize)")
 
-        // 设置约束
-        NSLayoutConstraint.activate([
+        // 设置约束 - 根据对齐方式设置水平约束
+        var constraints: [NSLayoutConstraint] = [
             formulaView.topAnchor.constraint(equalTo: container.topAnchor, constant: topSpacing),
-            formulaView.centerXAnchor.constraint(equalTo: container.centerXAnchor),
             formulaView.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -bottomSpacing),
             formulaView.widthAnchor.constraint(equalToConstant: min(formulaSize.width, width)),
             formulaView.heightAnchor.constraint(equalToConstant: formulaSize.height)
-        ])
+        ]
+
+        // 根据配置的对齐方式添加水平约束
+        switch configuration.latexAlignment {
+        case .left:
+            constraints.append(formulaView.leadingAnchor.constraint(equalTo: container.leadingAnchor))
+        case .right:
+            constraints.append(formulaView.trailingAnchor.constraint(equalTo: container.trailingAnchor))
+        default:  // .center, .justified, .natural
+            constraints.append(formulaView.centerXAnchor.constraint(equalTo: container.centerXAnchor))
+        }
+
+        NSLayoutConstraint.activate(constraints)
 
         let totalTime = (CFAbsoluteTimeGetCurrent() - createTime) * 1000
         print("[STREAM] 📐 LaTeX 创建完成，总耗时: \(String(format: "%.1f", totalTime))ms")
@@ -2725,7 +2736,7 @@ public final class MarkdownViewTextKit: UIView {
         outerContainer.translatesAutoresizingMaskIntoConstraints = false
 
         let container = UIView()
-        container.backgroundColor = UIColor.systemGray6.withAlphaComponent(0.5)
+        container.backgroundColor = configuration.blockquoteBackgroundColor
         container.layer.cornerRadius = 4
         container.translatesAutoresizingMaskIntoConstraints = false
         outerContainer.addSubview(container)
@@ -2739,7 +2750,7 @@ public final class MarkdownViewTextKit: UIView {
         // 创建内容 StackView - 支持垂直堆叠多个子元素
         let contentStack = UIStackView()
         contentStack.axis = .vertical
-        contentStack.spacing = 8
+        contentStack.spacing = configuration.blockquoteContentSpacing
         contentStack.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(contentStack)
 
@@ -2748,7 +2759,9 @@ public final class MarkdownViewTextKit: UIView {
         let leftIndent: CGFloat = (level > 1) ? 20 : 0
 
         // 计算子元素可用宽度
-        let padding = leftIndent + 4 + 12 + 8  // leftIndent + barWidth + contentLeading + contentTrailing
+        let barWidth = configuration.blockquoteBarWidth
+        let contentPadding = configuration.blockquoteContentPadding
+        let padding = leftIndent + barWidth + contentPadding + contentPadding / 1.5  // leftIndent + barWidth + contentLeading + contentTrailing
         let contentWidth = max(0, width - padding)
 
         // 递归创建子视图
@@ -2767,12 +2780,12 @@ public final class MarkdownViewTextKit: UIView {
             bar.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             bar.topAnchor.constraint(equalTo: container.topAnchor),
             bar.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-            bar.widthAnchor.constraint(equalToConstant: 4),
+            bar.widthAnchor.constraint(equalToConstant: barWidth),
 
-            contentStack.leadingAnchor.constraint(equalTo: bar.trailingAnchor, constant: 12),
-            contentStack.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -8),
-            contentStack.topAnchor.constraint(equalTo: container.topAnchor, constant: 8),
-            contentStack.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -8),
+            contentStack.leadingAnchor.constraint(equalTo: bar.trailingAnchor, constant: contentPadding),
+            contentStack.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -contentPadding / 1.5),
+            contentStack.topAnchor.constraint(equalTo: container.topAnchor, constant: configuration.blockquoteContentSpacing),
+            contentStack.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -configuration.blockquoteContentSpacing),
         ])
 
         return outerContainer
@@ -2802,7 +2815,7 @@ public final class MarkdownViewTextKit: UIView {
     }
     
     // MARK: - Details View
-    
+
     private func createDetailsView(
         summary: String,
         children: [MarkdownRenderElement],
@@ -2823,7 +2836,7 @@ public final class MarkdownViewTextKit: UIView {
 
         let container = UIStackView()
         container.axis = .vertical
-        container.spacing = 8  // 增加间距，避免贴太近
+        container.spacing = configuration.detailsSpacing  // 使用配置的间距
         container.alignment = .fill
         container.distribution = .fill
         container.translatesAutoresizingMaskIntoConstraints = false
@@ -2839,14 +2852,15 @@ public final class MarkdownViewTextKit: UIView {
         // 使用 UIButton.Configuration 设置样式
         var buttonConfig = UIButton.Configuration.plain()
         buttonConfig.title = "▶ " + summary
-        buttonConfig.contentInsets = NSDirectionalEdgeInsets(top: 10, leading: 12, bottom: 10, trailing: 12)
+        let buttonPadding = configuration.detailsContentPadding
+        buttonConfig.contentInsets = NSDirectionalEdgeInsets(top: buttonPadding * 0.8, leading: buttonPadding, bottom: buttonPadding * 0.8, trailing: buttonPadding)
         buttonConfig.background.backgroundColor = configuration.codeBackgroundColor.withAlphaComponent(0.3)
         buttonConfig.background.cornerRadius = 6
-        buttonConfig.baseForegroundColor = configuration.linkColor
+        buttonConfig.baseForegroundColor = configuration.detailsSummaryTextColor
         buttonConfig.titleAlignment = .leading
 
         summaryButton.configuration = buttonConfig
-        summaryButton.titleLabel?.font = UIFont.systemFont(ofSize: 14, weight: .medium)
+        summaryButton.titleLabel?.font = configuration.detailsSummaryFont
         summaryButton.contentHorizontalAlignment = .left
         summaryButton.isUserInteractionEnabled = true  // 确保可点击
         summaryButton.setContentHuggingPriority(.required, for: .vertical)
@@ -2854,12 +2868,12 @@ public final class MarkdownViewTextKit: UIView {
 
         // 🔧 核心修复：为按钮添加明确的最小高度约束，防止被压缩到0
         summaryButton.translatesAutoresizingMaskIntoConstraints = false
-        let buttonHeightConstraint = summaryButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 40)
+        let buttonHeightConstraint = summaryButton.heightAnchor.constraint(greaterThanOrEqualToConstant: configuration.detailsSummaryMinHeight)
         buttonHeightConstraint.priority = .required
         buttonHeightConstraint.isActive = true
 
         container.addArrangedSubview(summaryButton)
-        
+
         // Wrapper View (Plain UIView to handle hiding cleanly)
         let contentWrapper = UIView()
         contentWrapper.isHidden = true
@@ -2875,10 +2889,11 @@ public final class MarkdownViewTextKit: UIView {
         contentContainer.alignment = .fill
         contentContainer.distribution = .fill
         contentContainer.translatesAutoresizingMaskIntoConstraints = false
-        contentContainer.layoutMargins = UIEdgeInsets(top: 8, left: 12, bottom: 8, right: 12)
+        let contentPadding = configuration.detailsContentPadding
+        contentContainer.layoutMargins = UIEdgeInsets(top: contentPadding * 0.67, left: contentPadding, bottom: contentPadding * 0.67, right: contentPadding)
         contentContainer.isLayoutMarginsRelativeArrangement = true
         contentWrapper.addSubview(contentContainer)
-        
+
         NSLayoutConstraint.activate([
             contentContainer.topAnchor.constraint(equalTo: contentWrapper.topAnchor),
             contentContainer.bottomAnchor.constraint(equalTo: contentWrapper.bottomAnchor),
@@ -2887,8 +2902,8 @@ public final class MarkdownViewTextKit: UIView {
         ])
 
         // 🔥 修复：正确计算内容宽度
-        // layoutMargins 是 left: 12, right: 12，所以需要减去 24
-        let contentWidth = width - 24
+        // layoutMargins 是 left + right，所以需要减去
+        let contentWidth = width - contentPadding * 2
         var latexCount = 0
         var latexTotalTime: Double = 0
         for (index, child) in children.enumerated() {
@@ -3117,88 +3132,91 @@ public final class MarkdownViewTextKit: UIView {
     }
     
     // MARK: - Table View
-    
+
     private func createTableView(with tableData: MarkdownTableData, containerWidth: CGFloat) -> UIView {
         let container = UIView()
         container.translatesAutoresizingMaskIntoConstraints = false
-        
+
         let scrollView = UIScrollView()
         scrollView.showsHorizontalScrollIndicator = true
         scrollView.showsVerticalScrollIndicator = false
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(scrollView)
-        
+
         let tableStackView = UIStackView()
         tableStackView.axis = .vertical
         tableStackView.spacing = 0
         tableStackView.distribution = .fill
         tableStackView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.addSubview(tableStackView)
-        
+
         // 计算列宽
         let columnCount = max(tableData.headers.count, tableData.rows.first?.count ?? 0)
-        var columnWidths: [CGFloat] = Array(repeating: 80, count: columnCount)
-        
+        let cellPadding = configuration.tableCellPadding * 2  // 左右各 padding
+        var columnWidths: [CGFloat] = Array(repeating: configuration.tableMinColumnWidth, count: columnCount)
+
         for (index, header) in tableData.headers.enumerated() {
             let width = header.boundingRect(
-                with: CGSize(width: CGFloat.greatestFiniteMagnitude, height: 44),
+                with: CGSize(width: CGFloat.greatestFiniteMagnitude, height: configuration.tableRowHeight),
                 options: [.usesLineFragmentOrigin],
                 context: nil
-            ).width + 32
+            ).width + cellPadding
             columnWidths[index] = max(columnWidths[index], width)
         }
-        
+
         for row in tableData.rows {
             for (index, cell) in row.enumerated() where index < columnCount {
                 let width = cell.boundingRect(
-                    with: CGSize(width: CGFloat.greatestFiniteMagnitude, height: 44),
+                    with: CGSize(width: CGFloat.greatestFiniteMagnitude, height: configuration.tableRowHeight),
                     options: [.usesLineFragmentOrigin],
                     context: nil
-                ).width + 32
+                ).width + cellPadding
                 columnWidths[index] = max(columnWidths[index], width)
             }
         }
-        
-        columnWidths = columnWidths.map { min($0, 200) }
+
+        columnWidths = columnWidths.map { min($0, configuration.tableMaxColumnWidth) }
         let totalWidth = columnWidths.reduce(0, +)
-        
+
         // 表头行
         let headerRow = createTableRow(cells: tableData.headers, columnWidths: columnWidths, isHeader: true)
         tableStackView.addArrangedSubview(headerRow)
-        
+
         // 分隔线
         let separator = UIView()
         separator.backgroundColor = configuration.tableBorderColor
         separator.translatesAutoresizingMaskIntoConstraints = false
-        separator.heightAnchor.constraint(equalToConstant: 1).isActive = true
+        separator.heightAnchor.constraint(equalToConstant: configuration.tableSeparatorHeight).isActive = true
         tableStackView.addArrangedSubview(separator)
-        
+
         // 数据行
         for (index, row) in tableData.rows.enumerated() {
             let rowView = createTableRow(cells: row, columnWidths: columnWidths, isHeader: false)
             if index % 2 == 1 {
                 rowView.backgroundColor = configuration.tableAlternateRowBackgroundColor
+            } else {
+                rowView.backgroundColor = configuration.tableRowBackgroundColor
             }
             tableStackView.addArrangedSubview(rowView)
         }
-        
+
         NSLayoutConstraint.activate([
             scrollView.topAnchor.constraint(equalTo: container.topAnchor),
             scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-            
+
             tableStackView.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
             tableStackView.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
             tableStackView.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
             tableStackView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
             tableStackView.widthAnchor.constraint(equalToConstant: totalWidth),
         ])
-        
-        let rowHeight: CGFloat = 44
-        let tableHeight = rowHeight * CGFloat(tableData.rows.count + 1) + 1
+
+        let rowHeight = configuration.tableRowHeight
+        let tableHeight = rowHeight * CGFloat(tableData.rows.count + 1) + configuration.tableSeparatorHeight
         container.heightAnchor.constraint(equalToConstant: tableHeight).isActive = true
-        
+
         return container
     }
     
