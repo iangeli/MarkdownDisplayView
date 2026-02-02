@@ -95,7 +95,7 @@ Config.local.json 结构如下：
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/zjc19891106/MarkdownDisplayView.git", from: "1.5.9")
+    .package(url: "https://github.com/zjc19891106/MarkdownDisplayView.git", from: "1.6.1")
 ]
 ```
 

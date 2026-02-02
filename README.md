@@ -88,7 +88,7 @@ Config.local.json structure:
 Add the dependency in `Package.swift`:
 ```swift
 dependencies: [
-    .package(url: "https://github.com/zjc19891106/MarkdownDisplayView.git", from: "1.5.9")
+    .package(url: "https://github.com/zjc19891106/MarkdownDisplayView.git", from: "1.6.1")
 ]
 ```
 
