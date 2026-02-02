@@ -222,6 +222,12 @@ public final class MarkdownViewTextKit: UIView {
     private var lastStreamRenderTime: TimeInterval = 0
     private let streamRenderThrottle: TimeInterval = 0.3  // 300ms 节流（大幅降低CPU占用）
 
+    // MARK: - 流式输出震动反馈
+    /// 震动反馈生成器（懒加载，仅在需要时创建）
+    private var hapticFeedbackGenerator: UIImpactFeedbackGenerator?
+    /// 上次震动时间（用于节流）
+    private var lastHapticFeedbackTime: TimeInterval = 0
+
     // MARK: - 智能流式缓存（真流式模式）
 
     /// 流式缓存器实例
@@ -3630,6 +3636,10 @@ public final class MarkdownViewTextKit: UIView {
             let streamStartTime = CFAbsoluteTimeGetCurrent()
             self.streamingStartTimestamp = streamStartTime  // ⭐️ 保存流式开始时间
             self.firstLatexShown = false  // ⭐️ 重置首个公式标记
+
+            // 准备震动反馈
+            prepareHapticFeedback()
+
             print("[STREAM] ========== START ==========")
             print("[STREAM] 开始流式，文本长度: \(text.count) 字符")
 
@@ -3751,6 +3761,9 @@ public final class MarkdownViewTextKit: UIView {
                 finishChunkedParsing()
                 return
             }
+
+            // 触发震动反馈
+            triggerHapticFeedback()
 
             let range = chunkRanges[currentIndex]
             let isFirstChunk = (currentIndex == 0)
@@ -4645,6 +4658,8 @@ public final class MarkdownViewTextKit: UIView {
         isPausedForDisplay = false  // 重置暂停状态
         // ⚡️ 流式结束，清理视图缓存
         clearViewCache()
+        // 停止震动反馈
+        stopHapticFeedback()
     }
 
     /// 立即显示全部内容
@@ -4758,6 +4773,40 @@ public final class MarkdownViewTextKit: UIView {
         if isShowingWaitingIndicator {
             hideWaitingIndicator()
         }
+    }
+
+    // MARK: - 流式输出震动反馈
+
+    /// 准备震动反馈生成器（在流式开始时调用）
+    private func prepareHapticFeedback() {
+        guard configuration.streamingHapticFeedbackStyle != .none else { return }
+
+        if #available(iOS 13.0, *) {
+            if let style = configuration.streamingHapticFeedbackStyle.impactStyle {
+                hapticFeedbackGenerator = UIImpactFeedbackGenerator(style: style)
+                hapticFeedbackGenerator?.prepare()
+            }
+        }
+    }
+
+    /// 触发震动反馈（带节流控制）
+    private func triggerHapticFeedback() {
+        guard configuration.streamingHapticFeedbackStyle != .none else { return }
+
+        let currentTime = CACurrentMediaTime()
+        let minInterval = configuration.streamingHapticMinInterval
+
+        // 节流控制：避免过于频繁的震动
+        guard currentTime - lastHapticFeedbackTime >= minInterval else { return }
+
+        lastHapticFeedbackTime = currentTime
+        hapticFeedbackGenerator?.impactOccurred()
+    }
+
+    /// 停止震动反馈（在流式结束时调用）
+    private func stopHapticFeedback() {
+        hapticFeedbackGenerator = nil
+        lastHapticFeedbackTime = 0
     }
 
     /// 更新等待动画显示状态（保留用于兼容）
@@ -4906,6 +4955,9 @@ public final class MarkdownViewTextKit: UIView {
         // 等待动画只在 TypewriterEngine 空闲且一段时间无数据到达时显示
         startWaitingDetection()
 
+        // 准备震动反馈
+        prepareHapticFeedback()
+
         // 记录开始时间
         streamingStartTimestamp = CFAbsoluteTimeGetCurrent()
 
@@ -4923,6 +4975,9 @@ public final class MarkdownViewTextKit: UIView {
 
         // ⭐️ 标记收到新数据，用于等待动画检测
         markDataReceived()
+
+        // 触发震动反馈
+        triggerHapticFeedback()
 
         print("📥 [SmartBuffer] Received data: \(data.count) chars")
 
@@ -5026,6 +5081,9 @@ public final class MarkdownViewTextKit: UIView {
 
         // ⭐️ 标记收到新数据，用于等待动画检测
         markDataReceived()
+
+        // 触发震动反馈
+        triggerHapticFeedback()
 
         print("📝 [RealStream] Appending block: \(block.prefix(50))... (\(block.count) chars)")
 
@@ -5255,6 +5313,9 @@ public final class MarkdownViewTextKit: UIView {
 
         // ⭐️ 隐藏等待动画
         hideWaitingIndicator()
+
+        // 停止震动反馈
+        stopHapticFeedback()
 
         // ⭐️ 智能缓存模式：处理剩余的未完成内容
         if useSmartBufferMode {

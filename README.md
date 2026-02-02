@@ -69,6 +69,7 @@ Config.local.json structure:
 - 🔗 **Event Callbacks** — Link taps, image taps, TOC navigation.
 - 📱 **Native iOS** — Built with UIKit and TextKit 2 for excellent performance.
 - 🌓 **Dark Mode** — Built-in light and dark theme configurations.
+- 📳 **Haptic Feedback** — Supports synchronized haptic feedback during streaming output for enhanced interaction experience.
 
 ## Requirements
 - iOS 15.0+ (due to TextKit 2 requirement)
@@ -327,6 +328,29 @@ public struct SyntaxHighlightColors {
     public static var xcode: SyntaxHighlightColors      // Xcode light theme
     public static var xcodeDark: SyntaxHighlightColors  // Xcode dark theme
 }
+```
+
+#### Streaming Haptic Feedback Configuration
+
+```swift
+public var streamingHapticFeedbackStyle: StreamingHapticFeedbackStyle  // Haptic feedback style (default: .none)
+public var streamingHapticMinInterval: TimeInterval                    // Minimum interval between haptics (default: 0.05s)
+
+// StreamingHapticFeedbackStyle enum
+public enum StreamingHapticFeedbackStyle {
+    case none    // No haptic feedback (default)
+    case light   // Light haptic feedback
+    case medium  // Medium haptic feedback
+    case heavy   // Heavy haptic feedback
+    case soft    // Soft haptic feedback (iOS 13+)
+    case rigid   // Rigid haptic feedback (iOS 13+)
+}
+
+// Usage example
+var config = MarkdownConfiguration.default
+config.streamingHapticFeedbackStyle = .light  // Enable light haptic feedback
+config.streamingHapticMinInterval = 0.05      // 50ms minimum interval
+markdownView.configuration = config
 ```
 
 ## Table of Contents
@@ -834,6 +858,13 @@ manager.register(codeBlockRenderer: MermaidRenderer())
 **Solution**: Library is built with Swift 5.9 to avoid strict concurrency checking
 
 ## Changelog
+
+### 1.6.1 (2026-02-02)
+
+- 📳 **Streaming Haptic Feedback** - Added haptic feedback support during streaming output for enhanced user experience
+  - New `StreamingHapticFeedbackStyle` enum with options: `.none`, `.light`, `.medium`, `.heavy`, `.soft`, `.rigid`
+  - New configuration options: `streamingHapticFeedbackStyle` (feedback intensity) and `streamingHapticMinInterval` (minimum interval)
+  - Supports both real streaming (`appendStreamData`, `appendBlock`) and fake streaming (`startStreaming`) modes
 
 ### 1.6.0 (2026-01-30)
 

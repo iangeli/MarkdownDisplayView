@@ -70,6 +70,7 @@ Config.local.json 结构如下：
 - 🔗 **事件回调** - 链接点击、图片点击、目录导航
 - 📱 **iOS 原生** - 使用 UIKit 和 TextKit 2 构建，性能优异
 - 🌓 **深色模式** - 内置浅色和深色主题配置
+- 📳 **震动反馈** - 流式输出时支持同步震动反馈，提升交互体验
 
 ## 系统要求
 
@@ -343,6 +344,29 @@ public struct SyntaxHighlightColors {
     public static var xcode: SyntaxHighlightColors      // Xcode 浅色主题
     public static var xcodeDark: SyntaxHighlightColors  // Xcode 深色主题
 }
+```
+
+#### 流式输出震动反馈配置
+
+```swift
+public var streamingHapticFeedbackStyle: StreamingHapticFeedbackStyle  // 震动反馈级别（默认: .none）
+public var streamingHapticMinInterval: TimeInterval                    // 震动最小间隔时间（默认: 0.05 秒）
+
+// StreamingHapticFeedbackStyle 枚举
+public enum StreamingHapticFeedbackStyle {
+    case none    // 不震动（默认）
+    case light   // 轻微震动
+    case medium  // 中等震动
+    case heavy   // 强烈震动
+    case soft    // 柔和震动 (iOS 13+)
+    case rigid   // 刚性震动 (iOS 13+)
+}
+
+// 使用示例
+var config = MarkdownConfiguration.default
+config.streamingHapticFeedbackStyle = .light  // 启用轻微震动
+config.streamingHapticMinInterval = 0.05      // 50ms 最小间隔
+markdownView.configuration = config
 ```
 
 ## 目录功能
@@ -850,6 +874,13 @@ manager.register(codeBlockRenderer: MermaidRenderer())
 **解决方案**：库已使用 Swift 5.9 构建，避免严格并发检查
 
 ## 更新日志
+
+### 1.6.1 (2026-02-02)
+
+- 📳 **流式输出震动反馈** - 新增流式输出时的震动反馈支持，提升用户交互体验
+  - 新增 `StreamingHapticFeedbackStyle` 枚举，支持多种震动级别：`.none`、`.light`、`.medium`、`.heavy`、`.soft`、`.rigid`
+  - 新增配置项 `streamingHapticFeedbackStyle`（震动反馈强度）和 `streamingHapticMinInterval`（震动最小间隔）
+  - 真流式（`appendStreamData`、`appendBlock`）和假流式（`startStreaming`）模式均支持
 
 ### 1.6.0 (2026-01-30)
 

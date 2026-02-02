@@ -60,6 +60,36 @@ public enum MarkdownTypewriterTextMode: Sendable {
     case append
 }
 
+// MARK: - StreamingHapticFeedbackStyle
+/// 流式输出震动反馈级别
+public enum StreamingHapticFeedbackStyle: Sendable {
+    case none           // 不震动
+    case light          // 轻微震动
+    case medium         // 中等震动
+    case heavy          // 强烈震动
+    case soft           // 柔和震动 (iOS 13+)
+    case rigid          // 刚性震动 (iOS 13+)
+
+    /// 转换为 UIImpactFeedbackGenerator.FeedbackStyle
+    @available(iOS 13.0, *)
+    public var impactStyle: UIImpactFeedbackGenerator.FeedbackStyle? {
+        switch self {
+        case .none:
+            return nil
+        case .light:
+            return .light
+        case .medium:
+            return .medium
+        case .heavy:
+            return .heavy
+        case .soft:
+            return .soft
+        case .rigid:
+            return .rigid
+        }
+    }
+}
+
 // MARK: - SyntaxHighlightColors
 /// 代码高亮颜色配置
 public struct SyntaxHighlightColors: Sendable {
@@ -201,6 +231,12 @@ public struct MarkdownConfiguration: Sendable {
     // MARK: - 代码高亮配置
     public var syntaxColors: SyntaxHighlightColors = .xcode  // 代码高亮颜色（浅色主题）
     public var syntaxColorsDark: SyntaxHighlightColors = .xcodeDark  // 代码高亮颜色（深色主题）
+
+    // MARK: - 流式输出震动反馈配置
+    /// 流式输出时的震动反馈级别，默认为 .none（不震动）
+    public var streamingHapticFeedbackStyle: StreamingHapticFeedbackStyle = .none
+    /// 震动反馈的最小间隔时间（秒），避免过于频繁的震动，默认 0.05 秒
+    public var streamingHapticMinInterval: TimeInterval = 0.05
     
     public static var `default`: MarkdownConfiguration {
         MarkdownConfiguration(
