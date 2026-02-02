@@ -2,6 +2,8 @@
 
 一个功能强大的 iOS Markdown 渲染组件，基于 TextKit 2 构建，提供流畅的渲染性能和丰富的自定义选项。同时也支持AI问答流式渲染md格式。
 
+> 🚀 **MarkdownDisplayView 实现的流式渲染效果媲美 ChatGPT、Claude、豆包、DeepSeek、Grok 等主流 AI 终端的 iOS 客户端，并提供更丰富的自定义功能和配置选项。**
+
 ## 目录
 
 - [效果展示](#效果展示)

@@ -1,8 +1,10 @@
-*English | [中文](README_zh.md)* 
+*English | [中文](README_zh.md)*
 
 # MarkdownDisplayView
 
 A powerful iOS Markdown rendering component built on TextKit 2, providing smooth rendering performance and rich customization options. It also enables the streaming rendering of Markdown format in AI question-and-answer scenarios.
+
+> 🚀 **MarkdownDisplayView delivers streaming rendering effects comparable to leading AI terminal iOS clients like ChatGPT, Claude, Doubao, DeepSeek, and Grok, while offering even richer customization features and configuration options.**
 
 ## Contents
 
