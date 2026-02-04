@@ -459,6 +459,7 @@ final class AIChatViewController: UIViewController {
     private var activeTask: URLSessionDataTask?
     private let responseLogLimit = 400
     private let streamNormalizer = StreamMarkdownNormalizer()
+    private var receivedText = ""
 
     private let inputContainer = UIView()
     private let inputTextView = UITextView()
@@ -819,6 +820,7 @@ final class AIChatViewController: UIViewController {
     }
 
     private func finishStream() {
+        print("[AIChat][Stream][Complete] Total received chars: \(receivedText)")
         isRequesting = false
         sendButton.isEnabled = true
 
@@ -888,9 +890,9 @@ final class AIChatViewController: UIViewController {
     }
 
     private func logStreamDelta(_ delta: String) {
+        self.receivedText.append(delta)
         logServerText(delta, category: "stream", limit: nil)
     }
-
 
     @discardableResult
     private func appendMessage(role: ChatRole, content: String, isPlaceholder: Bool = false, isStreaming: Bool = false) -> Int {
@@ -985,11 +987,15 @@ final class AIChatMessageCell: UITableViewCell {
         bubbleView.layer.cornerRadius = 12
         bubbleView.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(bubbleView)
-        
         var config = MarkdownConfiguration.default
+        
         config.typewriterTextMode = .append
         config.typewriterHeightUpdateInterval = 20
         config.streamMinModuleLength = 20
+        
+        config.latexAlignment = .left                // 设置为居左对齐
+        config.latexBackgroundColor = .systemBlue.withAlphaComponent(0.1)  // 设置背景颜色
+        config.latexPadding = 16
         markdownView.configuration = config
         markdownView.enableTypewriterEffect = false
         markdownView.translatesAutoresizingMaskIntoConstraints = false
@@ -1083,3 +1089,4 @@ final class AIChatMessageCell: UITableViewCell {
         hasStartedStreaming = false
     }
 }
+
