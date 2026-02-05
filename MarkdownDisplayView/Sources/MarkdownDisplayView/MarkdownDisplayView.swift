@@ -34,6 +34,10 @@ public final class MarkdownViewTextKit: UIView {
         engine.onLayoutChange = { [weak self] in
             self?.notifyHeightChange()
         }
+        // ⭐️ 震动反馈：每次输出内容时触发
+        engine.onTypewriterStep = { [weak self] in
+            self?.triggerHapticFeedback()
+        }
         return engine
     }()
 
@@ -3762,9 +3766,6 @@ public final class MarkdownViewTextKit: UIView {
                 return
             }
 
-            // 触发震动反馈
-            triggerHapticFeedback()
-
             let range = chunkRanges[currentIndex]
             let isFirstChunk = (currentIndex == 0)
             let chunkStartTime = CFAbsoluteTimeGetCurrent()
@@ -4976,9 +4977,6 @@ public final class MarkdownViewTextKit: UIView {
         // ⭐️ 标记收到新数据，用于等待动画检测
         markDataReceived()
 
-        // 触发震动反馈
-        triggerHapticFeedback()
-
         print("📥 [SmartBuffer] Received data: \(data.count) chars")
 
         // 使用 StreamBuffer 检测完整模块
@@ -5081,9 +5079,6 @@ public final class MarkdownViewTextKit: UIView {
 
         // ⭐️ 标记收到新数据，用于等待动画检测
         markDataReceived()
-
-        // 触发震动反馈
-        triggerHapticFeedback()
 
         print("📝 [RealStream] Appending block: \(block.prefix(50))... (\(block.count) chars)")
 

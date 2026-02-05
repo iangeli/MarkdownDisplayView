@@ -90,7 +90,7 @@ Config.local.json structure:
 Add the dependency in `Package.swift`:
 ```swift
 dependencies: [
-    .package(url: "https://github.com/zjc19891106/MarkdownDisplayView.git", from: "1.6.1")
+    .package(url: "https://github.com/zjc19891106/MarkdownDisplayView.git", from: "1.6.2")
 ]
 ```
 
@@ -860,6 +860,14 @@ manager.register(codeBlockRenderer: MermaidRenderer())
 **Solution**: Library is built with Swift 5.9 to avoid strict concurrency checking
 
 ## Changelog
+
+### 1.6.2 (2026-02-05)
+
+- 📳 **Haptic Feedback Timing Optimization** - Haptic feedback now syncs precisely with TypewriterEngine output rhythm
+  - Text haptics: Only triggers when `revealCharacter` actually displays new characters
+  - Block haptics: Triggers when block element animation completes (image, LaTeX, etc.)
+  - Removed unnecessary haptics for container views (`.show`) and small elements (`.label`)
+  - Haptic feedback no longer triggers on data arrival, but on actual content display
 
 ### 1.6.1 (2026-02-02)
 

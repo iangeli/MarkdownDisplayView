@@ -97,7 +97,7 @@ Config.local.json 结构如下：
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/zjc19891106/MarkdownDisplayView.git", from: "1.6.1")
+    .package(url: "https://github.com/zjc19891106/MarkdownDisplayView.git", from: "1.6.2")
 ]
 ```
 
@@ -876,6 +876,14 @@ manager.register(codeBlockRenderer: MermaidRenderer())
 **解决方案**：库已使用 Swift 5.9 构建，避免严格并发检查
 
 ## 更新日志
+
+### 1.6.2 (2026-02-05)
+
+- 📳 **震动反馈时机优化** - 震动反馈现与 TypewriterEngine 输出节奏精确同步
+  - 文字震动：仅在 `revealCharacter` 实际显示新字符时触发
+  - 块级震动：在块级元素（图片、LaTeX 等）动画完成时触发
+  - 移除容器视图（`.show`）和小元素（`.label`）的不必要震动
+  - 震动不再在数据到达时触发，而是在内容实际显示时触发
 
 ### 1.6.1 (2026-02-02)
 

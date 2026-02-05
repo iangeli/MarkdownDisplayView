@@ -45,6 +45,8 @@ class TypewriterEngine {
 
     var onComplete: (() -> Void)?
     var onLayoutChange: (() -> Void)?
+    /// 每次输出内容时的回调（用于震动反馈等）
+    var onTypewriterStep: (() -> Void)?
 
     func updateSpeed(charsPerStep: Int? = nil,
                      baseDuration: TimeInterval? = nil,
@@ -293,6 +295,8 @@ class TypewriterEngine {
             // ⚡️ 关键修复：视图显示后立即通知高度变化
             onLayoutChange?()
 
+            // 注意：.show 是容器/根视图渐显，不触发震动反馈
+
             let showStartTime = CFAbsoluteTimeGetCurrent()
             UIView.animate(withDuration: 0.15, animations: {
                 view.alpha = 1.0
@@ -338,12 +342,15 @@ class TypewriterEngine {
 
             UIView.animate(withDuration: 0.2, animations: {
                 view.alpha = 1.0
-            }, completion: { _ in
+            }, completion: { [weak self] _ in
                 print("[STREAM] 📦 块视图显示完成: \(blockViewType), 动画耗时: \(String(format: "%.1f", (CFAbsoluteTimeGetCurrent() - blockStartTime) * 1000))ms")
-                self.finishCurrentTask()
+                // 块级元素动画完成时触发震动反馈
+                self?.onTypewriterStep?()
+                self?.finishCurrentTask()
             })
 
         case .label(let label):
+            // 注意：.label 是小元素，不触发震动反馈
             UIView.animate(withDuration: 0.1, animations: {
                 label.alpha = 1.0
             }, completion: { _ in
@@ -384,8 +391,11 @@ class TypewriterEngine {
 
         // ⭐️ 优化：批量显示字符（每次显示 charsPerStep 个）
         let nextIndex = min(currentIndex + charsPerStep, totalLen)
-        if textView.revealCharacter(upto: nextIndex) {
+        let didReveal = textView.revealCharacter(upto: nextIndex)
+        if didReveal {
             onLayoutChange?()
+            // 只在有实际内容显示时触发震动反馈
+            onTypewriterStep?()
         }
 
         let delay = calculateDelay(at: currentIndex, text: textView.attributedText?.string ?? "")
