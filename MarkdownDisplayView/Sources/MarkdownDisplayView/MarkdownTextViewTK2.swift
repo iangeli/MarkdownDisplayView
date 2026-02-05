@@ -414,6 +414,7 @@ extension MarkdownTextViewTK2 {
     }
 
     /// 揭示前 N 个字符（支持批量显示）
+    /// - Returns: 是否有新字符被显示
     func revealCharacter(upto index: Int) -> Bool {
         guard index > 0 else { return false }
 
@@ -452,11 +453,13 @@ extension MarkdownTextViewTK2 {
                 } else {
                     setNeedsLayout()
                 }
-                return true
+            } else {
+                // ⭐️ 方案 A：即使不更新布局，也强制重绘以实现匀速显示
+                setNeedsDisplay()
             }
 
-            setNeedsDisplay()
-            return false
+            // ⭐️ 方案 A：只要有新字符显示就返回 true
+            return true
         }
 
         guard let originalAttr = attributedText,
@@ -495,6 +498,8 @@ extension MarkdownTextViewTK2 {
 
         // 强制重绘
         setNeedsDisplay()
-        return false
+
+        // ⭐️ 方案 A：只要有新字符显示就返回 true
+        return true
     }
 }
