@@ -63,7 +63,7 @@ Config.local.json structure:
 ## Features
 - 🚀 **High-Performance Rendering** — Based on TextKit 2, supports asynchronous rendering, incremental updates, streaming rendering, etc. **Instant loading** with ultra-fast first screen rendering.
 - ⚡ **Low CPU Usage** — Streaming mode supports nested style rendering with CPU peak < 56% on iPhone 17 Pro simulator, averaging only 30%.
-- 🎨 **Full Markdown Support** — Formula of LaTeX protocol, Headings, lists, tables, code blocks, blockquotes, images, and more.
+- 🎨 **Full Markdown Support** — Formula of LaTeX protocol, Headings, lists, tables, code blocks (with horizontal scrolling), blockquotes, images, and more.
 - 🌈 **Syntax Highlighting** — Supports syntax highlighting for 20+ programming languages (Swift, Python, JavaScript, etc.).
 - 📑 **Automatic Table of Contents** — Automatically extracts headings to generate an interactive TOC.
 - 🎯 **Highly Customizable** — Comprehensive configuration for fonts, colors, spacing, etc.
@@ -90,7 +90,7 @@ Config.local.json structure:
 Add the dependency in `Package.swift`:
 ```swift
 dependencies: [
-    .package(url: "https://github.com/zjc19891106/MarkdownDisplayView.git", from: "1.6.2")
+    .package(url: "https://github.com/zjc19891106/MarkdownDisplayView.git", from: "1.6.8")
 ]
 ```
 
@@ -860,6 +860,14 @@ manager.register(codeBlockRenderer: MermaidRenderer())
 **Solution**: Library is built with Swift 5.9 to avoid strict concurrency checking
 
 ## Changelog
+
+### 1.6.8 (2026-02-06)
+
+- 📜 **Code Block Horizontal Scrolling** - Code blocks now support horizontal scrolling to view complete long code lines
+  - Implemented using `NSTextAttachmentViewProvider` pattern, consistent with LaTeX formula and table rendering architecture
+  - New `CodeBlockAttachment` and `CodeBlockAttachmentViewProvider` classes for code block rendering
+  - Code text no longer wraps; users can scroll horizontally to view full code content
+  - Maintains original syntax highlighting, background color, and corner radius styling
 
 ### 1.6.2 (2026-02-05)
 

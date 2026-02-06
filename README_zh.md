@@ -64,7 +64,7 @@ Config.local.json 结构如下：
 
 - 🚀 **高性能渲染** - 基于 TextKit 2，支持异步渲染和增量更新，流式渲染等，**秒开加载**，首屏渲染极速完成
 - ⚡ **低 CPU 占用** - 流式模式下支持嵌套样式展示，iPhone 17 Pro 模拟器上 CPU 峰值 < 56%，平均仅 30%
-- 🎨 **完整 Markdown 支持** - LaTeX协议公式、标题、列表、表格、代码块、引用、图片等
+- 🎨 **完整 Markdown 支持** - LaTeX协议公式、标题、列表、表格、代码块（支持横向滚动）、引用、图片等
 - 🌈 **语法高亮** - 支持 20+ 种编程语言的代码高亮（Swift、Python、JavaScript 等）
 - 📑 **自动目录** - 自动提取标题生成可交互目录
 - 🎯 **高度可定制** - 字体、颜色、间距等全方位配置
@@ -97,7 +97,7 @@ Config.local.json 结构如下：
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/zjc19891106/MarkdownDisplayView.git", from: "1.6.2")
+    .package(url: "https://github.com/zjc19891106/MarkdownDisplayView.git", from: "1.6.8")
 ]
 ```
 
@@ -876,6 +876,14 @@ manager.register(codeBlockRenderer: MermaidRenderer())
 **解决方案**：库已使用 Swift 5.9 构建，避免严格并发检查
 
 ## 更新日志
+
+### 1.6.8 (2026-02-06)
+
+- 📜 **代码块横向滚动** - 代码块现支持横向滚动，可查看完整的长代码行
+  - 采用 `NSTextAttachmentViewProvider` 模式实现，与 LaTeX 公式和表格的渲染架构保持一致
+  - 新增 `CodeBlockAttachment` 和 `CodeBlockAttachmentViewProvider` 类处理代码块渲染
+  - 代码文本不再换行，用户可通过横向滚动查看完整代码内容
+  - 保留原有的语法高亮、背景色和圆角样式
 
 ### 1.6.2 (2026-02-05)
 

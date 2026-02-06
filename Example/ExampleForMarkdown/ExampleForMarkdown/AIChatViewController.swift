@@ -461,6 +461,9 @@ final class AIChatViewController: UIViewController {
     private let streamNormalizer = StreamMarkdownNormalizer()
     private var receivedText = ""
 
+    /// 用户是否正在交互（拖拽滚动），用于暂停自动滚动
+    private var isUserInteracting = false
+
     private let inputContainer = UIView()
     private let inputTextView = UITextView()
     private let sendButton = UIButton(type: .system)
@@ -915,6 +918,8 @@ final class AIChatViewController: UIViewController {
     }
 
     private func scrollToBottom(animated: Bool) {
+        // 用户正在交互时不自动滚动，避免打断用户浏览
+        guard !isUserInteracting else { return }
         guard messages.count > 0 else { return }
         let indexPath = IndexPath(row: messages.count - 1, section: 0)
         tableView.scrollToRow(at: indexPath, at: .bottom, animated: animated)
@@ -961,6 +966,41 @@ extension AIChatViewController: UITableViewDataSource, UITableViewDelegate {
             self?.tableView.endUpdates()
         }
         return cell
+    }
+
+    // MARK: - UIScrollViewDelegate（用户交互检测）
+
+    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+        // 用户开始拖拽，暂停自动滚动
+        isUserInteracting = true
+    }
+
+    func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+        if !decelerate {
+            // 拖拽结束且没有惯性滚动，检查是否在底部
+            checkIfAtBottomAndResumeAutoScroll(scrollView)
+        }
+    }
+
+    func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+        // 惯性滚动结束，检查是否在底部
+        checkIfAtBottomAndResumeAutoScroll(scrollView)
+    }
+
+    private func checkIfAtBottomAndResumeAutoScroll(_ scrollView: UIScrollView) {
+        // 判断是否滚动到底部（允许 20pt 误差）
+        let offsetY = scrollView.contentOffset.y
+        let contentHeight = scrollView.contentSize.height
+        let frameHeight = scrollView.frame.height
+        let bottomInset = scrollView.contentInset.bottom
+
+        let isAtBottom = offsetY >= (contentHeight - frameHeight - bottomInset - 20)
+
+        if isAtBottom {
+            // 用户滚动到底部，恢复自动滚动
+            isUserInteracting = false
+        }
+        // 如果用户没有滚动到底部，保持 isUserInteracting = true，不自动滚动
     }
 }
 

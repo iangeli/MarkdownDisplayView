@@ -2148,8 +2148,21 @@ public final class MarkdownViewTextKit: UIView {
                 let rawCode = attributedString.string
                 return renderer.renderCodeBlock(code: rawCode, configuration: configuration, containerWidth: containerWidth)
             }
-            // 默认代码块渲染
-            return createCodeBlockView(with: attributedString, width: containerWidth, fixedHeight: precalculatedHeight)
+            // 默认代码块渲染：使用 CodeBlockAttachment 支持横向滚动
+            let codeAttachment = CodeBlockAttachment(
+                code: attributedString,
+                configuration: configuration,
+                containerWidth: containerWidth,
+                language: language
+            )
+
+            let codeParagraphStyle = NSMutableParagraphStyle()
+            codeParagraphStyle.alignment = .left
+
+            let codeAttrString = NSMutableAttributedString(attachment: codeAttachment)
+            codeAttrString.addAttribute(.paragraphStyle, value: codeParagraphStyle, range: NSRange(location: 0, length: codeAttrString.length))
+
+            return createTextView(with: codeAttrString, width: containerWidth)
         case .quote(let children, let level):
             return createQuoteView(children: children, width: containerWidth, level: level)
 
