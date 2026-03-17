@@ -445,6 +445,12 @@ public final class MarkdownViewTextKit: UIView {
             if let encodedId = item.id.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed),
                let url = URL(string: "toc://\(encodedId)") {
                 attrString.addAttribute(.link, value: url, range: range)
+                // 显式控制下划线：TextKit 2 对 .link 属性有默认下划线行为，必须用 0 明确关闭
+                attrString.addAttribute(
+                    .underlineStyle,
+                    value: configuration.linkUnderlineEnabled ? NSUnderlineStyle.single.rawValue : 0,
+                    range: range
+                )
             }
             
             // 缩进样式
@@ -611,7 +617,8 @@ public final class MarkdownViewTextKit: UIView {
                     textView.attributedText = newText
                     textView.linkTextAttributes = [
                         .foregroundColor: configuration.linkColor,
-                        .underlineStyle: NSUnderlineStyle.single.rawValue,
+                        .underlineStyle: configuration.linkUnderlineEnabled
+                            ? NSUnderlineStyle.single.rawValue : 0,
                     ]
                     
                     // ⭐️ 核心修复：显式指定 containerWidth 进行布局计算
@@ -2681,7 +2688,8 @@ public final class MarkdownViewTextKit: UIView {
             textView.typewriterHeightUpdateInterval = configuration.typewriterHeightUpdateInterval
             textView.linkTextAttributes = [
                 .foregroundColor: configuration.linkColor,
-                .underlineStyle: NSUnderlineStyle.single.rawValue,
+                .underlineStyle: configuration.linkUnderlineEnabled
+                    ? NSUnderlineStyle.single.rawValue : 0,
             ]
             textView.onLinkTap = { [weak self] url in
                 self?.handleLinkTap(url)

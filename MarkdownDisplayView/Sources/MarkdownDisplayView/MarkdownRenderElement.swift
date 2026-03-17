@@ -167,6 +167,7 @@ public struct MarkdownConfiguration: Sendable {
     public var textColor: UIColor
     public var headingColor: UIColor
     public var linkColor: UIColor
+    public var linkUnderlineEnabled: Bool = true  // 链接是否显示下划线，默认 true
     public var codeTextColor: UIColor
     public var codeBackgroundColor: UIColor
     public var blockquoteTextColor: UIColor

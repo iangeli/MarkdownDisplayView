@@ -78,6 +78,7 @@ class MarkdownTextViewTK2: UIView {
     private func setupTextKit2() {
         textContentStorage.addTextLayoutManager(textLayoutManager)
         textLayoutManager.textContainer = textContainer
+        textLayoutManager.delegate = self  // 接管链接渲染属性，控制下划线等样式
         textContainer.lineFragmentPadding = 0
         textContainer.widthTracksTextView = false
         textContainer.heightTracksTextView = false
@@ -501,5 +502,21 @@ extension MarkdownTextViewTK2 {
 
         // ⭐️ 方案 A：只要有新字符显示就返回 true
         return true
+    }
+}
+
+// MARK: - NSTextLayoutManagerDelegate
+@available(iOS 15.0, *)
+extension MarkdownTextViewTK2: NSTextLayoutManagerDelegate {
+    /// 接管 TextKit 2 的链接渲染属性。
+    /// 系统默认会给 .link 文本加蓝色前景色 + 下划线；通过此代理方法用外部注入的
+    /// linkTextAttributes 替换，从而实现对下划线等样式的精确控制。
+    func textLayoutManager(
+        _ textLayoutManager: NSTextLayoutManager,
+        renderingAttributesForLink link: Any,
+        at location: NSTextLocation,
+        defaultAttributes renderingAttributes: [NSAttributedString.Key: Any]
+    ) -> [NSAttributedString.Key: Any]? {
+        return linkTextAttributes.isEmpty ? renderingAttributes : linkTextAttributes
     }
 }

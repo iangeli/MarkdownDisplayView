@@ -219,6 +219,7 @@ config.codeFont = .monospacedSystemFont(ofSize: 15, weight: .regular)
 // 自定义颜色
 config.textColor = .label
 config.linkColor = .systemBlue
+config.linkUnderlineEnabled = false    // 关闭链接下划线
 config.codeBackgroundColor = .systemGray6
 config.blockquoteTextColor = .secondaryLabel
 
@@ -253,6 +254,7 @@ public var blockquoteFont: UIFont        // 引用字体
 public var textColor: UIColor                          // 文本颜色
 public var headingColor: UIColor                       // 标题颜色
 public var linkColor: UIColor                          // 链接颜色
+public var linkUnderlineEnabled: Bool                  // 链接是否显示下划线（默认 true）
 public var codeTextColor: UIColor                      // 代码文本颜色
 public var codeBackgroundColor: UIColor                // 代码背景色
 public var blockquoteTextColor: UIColor                // 引用文本颜色
@@ -876,6 +878,13 @@ manager.register(codeBlockRenderer: MermaidRenderer())
 **解决方案**：库已使用 Swift 5.9 构建，避免严格并发检查
 
 ## 更新日志
+
+### 1.6.9 (2026-03-17)
+
+- 🔗 **链接下划线可配置** - 新增 `linkUnderlineEnabled` 配置项，支持控制链接是否显示下划线
+  - `MarkdownConfiguration` 新增属性 `linkUnderlineEnabled: Bool`（默认值 `true`）
+  - 同时作用于 Markdown 行内链接（`[文字](url)`）和目录导航链接
+  - **根因修复**：实现 `NSTextLayoutManagerDelegate.renderingAttributesForLink(_:at:defaultAttributes:)` 代理方法，正确拦截 TextKit 2 内置链接渲染管线——此前该管线会完全忽略 `NSAttributedString` 中设置的 `underlineStyle` 属性
 
 ### 1.6.8 (2026-02-06)
 

@@ -203,6 +203,7 @@ config.codeFont = .monospacedSystemFont(ofSize: 15, weight: .regular)
 // Custom colors
 config.textColor = .label
 config.linkColor = .systemBlue
+config.linkUnderlineEnabled = false    // Disable link underline
 config.codeBackgroundColor = .systemGray6
 config.blockquoteTextColor = .secondaryLabel
 
@@ -237,6 +238,7 @@ public var blockquoteFont: UIFont        // Blockquote font
 public var textColor: UIColor                          // Text color
 public var headingColor: UIColor                       // Heading color
 public var linkColor: UIColor                          // Link color
+public var linkUnderlineEnabled: Bool                  // Whether links display underline (default: true)
 public var codeTextColor: UIColor                      // Code text color
 public var codeBackgroundColor: UIColor                // Code background color
 public var blockquoteTextColor: UIColor                // Blockquote text color
@@ -860,6 +862,13 @@ manager.register(codeBlockRenderer: MermaidRenderer())
 **Solution**: Library is built with Swift 5.9 to avoid strict concurrency checking
 
 ## Changelog
+
+### 1.6.9 (2026-03-17)
+
+- 🔗 **Link Underline Control** - Added `linkUnderlineEnabled` configuration option to control whether links display underlines
+  - New property `linkUnderlineEnabled: Bool` in `MarkdownConfiguration` (default: `true`)
+  - Affects all link types: inline Markdown links (`[text](url)`) and TOC navigation links
+  - **Root cause fix**: Implemented `NSTextLayoutManagerDelegate.renderingAttributesForLink(_:at:defaultAttributes:)` to properly intercept TextKit 2's built-in link rendering pipeline, which previously ignored `NSAttributedString` underline attributes entirely
 
 ### 1.6.8 (2026-02-06)
 

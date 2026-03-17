@@ -922,9 +922,13 @@ final class MarkdownParser: MarkdownParserProtocol {
         }
         
         let range = NSRange(location: 0, length: result.length)
+        // 显式设置 underlineStyle：TextKit 2 对 .link 属性有默认下划线行为，
+        // 必须用 0 明确关闭，而不能仅仅"不设置"
         result.addAttributes([
             .foregroundColor: configuration.linkColor,
-            .underlineStyle: NSUnderlineStyle.single.rawValue,
+            .underlineStyle: configuration.linkUnderlineEnabled
+                ? NSUnderlineStyle.single.rawValue
+                : 0,
         ], range: range)
         
         if let destination = link.destination {
