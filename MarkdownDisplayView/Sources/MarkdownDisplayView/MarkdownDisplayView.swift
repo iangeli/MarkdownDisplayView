@@ -612,9 +612,10 @@ public final class MarkdownViewTextKit: UIView {
             }
 
             if let textView = textView {
-                if textView.attributedText != newText {
+                let normalizedText = normalizedAttributedTextForRendering(newText)
+                if textView.attributedText != normalizedText {
                     // 1. 更新文本
-                    textView.attributedText = newText
+                    textView.attributedText = normalizedText
                     textView.linkTextAttributes = [
                         .foregroundColor: configuration.linkColor,
                         .underlineStyle: configuration.linkUnderlineEnabled
@@ -883,6 +884,11 @@ public final class MarkdownViewTextKit: UIView {
 
         // ⚡️ List 子元素复用优化（支持流式增量更新）
         case (.list(let oldItems, let oldLevel), .list(let newItems, let newLevel)):
+            // 在可复用 Cell 场景下，列表原地更新容易残留旧布局状态，优先保证稳定性
+            if isEmbeddedInReusableCell() {
+                return false
+            }
+
             // 层级不同，需要重建
             if oldLevel != newLevel {
                 print("⚠️ [List] Level changed: \(oldLevel) → \(newLevel), rebuilding")
@@ -902,6 +908,12 @@ public final class MarkdownViewTextKit: UIView {
                 return false
             }
 
+            container.distribution = .fill
+            container.isLayoutMarginsRelativeArrangement = false
+            container.layoutMargins = .zero
+            container.setContentHuggingPriority(.required, for: .vertical)
+            container.setContentCompressionResistancePriority(.required, for: .vertical)
+
             // 2. 计算内容宽度和标记宽度
             let indent: CGFloat = configuration.listIndent
             let currentIndent = (oldLevel > 1) ? indent : 0
@@ -909,16 +921,16 @@ public final class MarkdownViewTextKit: UIView {
 
             // 预计算最大标记宽度
             let maxMarkerWidth: CGFloat = {
-                var maxWidth: CGFloat = 20
+                var maxWidth: CGFloat = configuration.listMarkerMinWidth
                 for item in newItems {
                     let markerText = item.marker as NSString
                     let size = markerText.size(withAttributes: [.font: configuration.bodyFont])
-                    maxWidth = max(maxWidth, ceil(size.width) + 4)
+                    maxWidth = max(maxWidth, ceil(size.width) + configuration.listMarkerSpacing)
                 }
                 return maxWidth
             }()
 
-            let itemContentWidth = contentMaxWidth - maxMarkerWidth - 4
+            let itemContentWidth = contentMaxWidth - maxMarkerWidth - configuration.listMarkerSpacing
 
             // 3. Diff & Patch 列表项
             let existingItemViews = container.arrangedSubviews
@@ -928,12 +940,31 @@ public final class MarkdownViewTextKit: UIView {
                 if itemIndex < oldItems.count && itemIndex < existingItemViews.count {
                     // 尝试复用现有列表项
                     let oldItem = oldItems[itemIndex]
+                    if let itemStack = existingItemViews[itemIndex] as? UIStackView,
+                       itemStack.arrangedSubviews.count >= 2,
+                       let contentStack = itemStack.arrangedSubviews[1] as? UIStackView {
+                        itemStack.isLayoutMarginsRelativeArrangement = false
+                        itemStack.layoutMargins = .zero
+                        contentStack.isLayoutMarginsRelativeArrangement = false
+                        contentStack.layoutMargins = .zero
+                        itemStack.setContentHuggingPriority(.required, for: .vertical)
+                        itemStack.setContentCompressionResistancePriority(.required, for: .vertical)
+                        contentStack.setContentHuggingPriority(.required, for: .vertical)
+                        contentStack.setContentCompressionResistancePriority(.required, for: .vertical)
+                        // 统一项内间距，避免历史视图或增量更新路径出现 spacing 漂移
+                        contentStack.spacing = 0
+                        applyListDebugStyleIfNeeded(to: itemStack, color: .systemBlue)
+                        applyListDebugStyleIfNeeded(to: contentStack, color: .systemGreen)
+                    }
+
+                    let oldVisibleChildren = visibleListChildren(in: oldItem)
+                    let newVisibleChildren = visibleListChildren(in: newItem)
 
                     if oldItem.marker == newItem.marker,
-                       oldItem.children.count == newItem.children.count {
+                       oldVisibleChildren.count == newVisibleChildren.count {
                         // 检查子元素是否完全相同
                         var allChildrenMatch = true
-                        for (oldChild, newChild) in zip(oldItem.children, newItem.children) {
+                        for (oldChild, newChild) in zip(oldVisibleChildren, newVisibleChildren) {
                             if !elementsAreEqual(oldChild, newChild) {
                                 allChildrenMatch = false
                                 break
@@ -951,14 +982,16 @@ public final class MarkdownViewTextKit: UIView {
 
                                 var newChildViews: [UIView] = []
                                 let existingChildViews = contentStack.arrangedSubviews
+                                contentStack.spacing = 0
 
-                                for (childIndex, newChild) in newItem.children.enumerated() {
-                                    if childIndex < oldItem.children.count,
+                                for (childIndex, newChild) in newVisibleChildren.enumerated() {
+                                    if childIndex < oldVisibleChildren.count,
                                        childIndex < existingChildViews.count {
-                                        let oldChild = oldItem.children[childIndex]
+                                        let oldChild = oldVisibleChildren[childIndex]
                                         if canReuseElement(old: oldChild, new: newChild) {
                                             let childView = existingChildViews[childIndex]
                                             if updateViewInPlace(childView, old: oldChild, new: newChild, containerWidth: itemContentWidth) {
+                                                applyListDebugStyleIfNeeded(to: childView, color: .systemPink)
                                                 newChildViews.append(childView)
                                                 continue
                                             }
@@ -967,6 +1000,7 @@ public final class MarkdownViewTextKit: UIView {
                                     // 创建新子视图
                                     let isFirst = (childIndex == 0)
                                     let childView = createView(for: newChild, containerWidth: itemContentWidth, suppressTopSpacing: isFirst, suppressBottomSpacing: true)
+                                    applyListDebugStyleIfNeeded(to: childView, color: .systemPink)
                                     newChildViews.append(childView)
                                 }
 
@@ -986,6 +1020,7 @@ public final class MarkdownViewTextKit: UIView {
                                     contentStack.arrangedSubviews.last?.removeFromSuperview()
                                 }
 
+                                normalizeListContentStackLayout(contentStack, itemContentWidth: itemContentWidth)
                                 continue
                             } else {
                                 // 视图结构不符合预期，需要重建此项
@@ -1003,8 +1038,13 @@ public final class MarkdownViewTextKit: UIView {
                     let itemStack = UIStackView()
                     itemStack.axis = .horizontal
                     itemStack.alignment = .top
-                    itemStack.spacing = 4
+                    itemStack.spacing = configuration.listMarkerSpacing
+                    itemStack.isLayoutMarginsRelativeArrangement = false
+                    itemStack.layoutMargins = .zero
                     itemStack.translatesAutoresizingMaskIntoConstraints = false
+                    itemStack.setContentHuggingPriority(.required, for: .vertical)
+                    itemStack.setContentCompressionResistancePriority(.required, for: .vertical)
+                    applyListDebugStyleIfNeeded(to: itemStack, color: .systemBlue)
 
                     // 标记
                     let markerLabel = UILabel()
@@ -1015,21 +1055,30 @@ public final class MarkdownViewTextKit: UIView {
                     markerLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
                     markerLabel.widthAnchor.constraint(equalToConstant: maxMarkerWidth).isActive = true
                     markerLabel.textAlignment = .right
+                    applyListDebugStyleIfNeeded(to: markerLabel, color: .systemYellow)
                     itemStack.addArrangedSubview(markerLabel)
 
                     // 内容容器
                     let contentStack = UIStackView()
                     contentStack.axis = .vertical
-                    contentStack.spacing = 4
+                    contentStack.spacing = 0
                     contentStack.alignment = .fill
+                    contentStack.isLayoutMarginsRelativeArrangement = false
+                    contentStack.layoutMargins = .zero
                     contentStack.translatesAutoresizingMaskIntoConstraints = false
+                    contentStack.setContentHuggingPriority(.required, for: .vertical)
+                    contentStack.setContentCompressionResistancePriority(.required, for: .vertical)
+                    applyListDebugStyleIfNeeded(to: contentStack, color: .systemGreen)
 
-                    for (childIndex, childElement) in newItem.children.enumerated() {
+                    let visibleChildren = visibleListChildren(in: newItem)
+                    for (childIndex, childElement) in visibleChildren.enumerated() {
                         let isFirst = (childIndex == 0)
                         let childView = createView(for: childElement, containerWidth: itemContentWidth, suppressTopSpacing: isFirst, suppressBottomSpacing: true)
+                        applyListDebugStyleIfNeeded(to: childView, color: .systemPink)
                         contentStack.addArrangedSubview(childView)
                     }
 
+                    normalizeListContentStackLayout(contentStack, itemContentWidth: itemContentWidth)
                     itemStack.addArrangedSubview(contentStack)
                     container.addArrangedSubview(itemStack)
                 }
@@ -1044,6 +1093,14 @@ public final class MarkdownViewTextKit: UIView {
             // 移除多余的旧列表项
             while container.arrangedSubviews.count > newItems.count {
                 container.arrangedSubviews.last?.removeFromSuperview()
+            }
+
+            // 自愈旧布局状态：即使内容未变化，也按当前宽度统一重排一次，避免首项高度沿用旧值
+            for arranged in container.arrangedSubviews {
+                guard let itemStack = arranged as? UIStackView,
+                      itemStack.arrangedSubviews.count >= 2,
+                      let contentStack = itemStack.arrangedSubviews[1] as? UIStackView else { continue }
+                normalizeListContentStackLayout(contentStack, itemContentWidth: itemContentWidth)
             }
 
             print("✅ [List] Successfully updated, reused existing views")
@@ -2228,9 +2285,15 @@ public final class MarkdownViewTextKit: UIView {
         // 1. 创建主容器（垂直堆叠每个列表项）
         let container = UIStackView()
         container.axis = .vertical
+        container.distribution = .fill
         container.spacing = configuration.listItemSpacing // 列表项之间的间距
         container.alignment = .fill
+        container.isLayoutMarginsRelativeArrangement = false
+        container.layoutMargins = .zero
         container.translatesAutoresizingMaskIntoConstraints = false
+        container.setContentHuggingPriority(.required, for: .vertical)
+        container.setContentCompressionResistancePriority(.required, for: .vertical)
+        applyListDebugStyleIfNeeded(to: container, color: .systemRed)
 
         // 2. 计算缩进和内容宽度
         // 使用配置项，默认为 20pt
@@ -2260,7 +2323,12 @@ public final class MarkdownViewTextKit: UIView {
             itemStack.axis = .horizontal
             itemStack.alignment = .top // 顶部对齐，防止标记跑到中间
             itemStack.spacing = configuration.listMarkerSpacing
+            itemStack.isLayoutMarginsRelativeArrangement = false
+            itemStack.layoutMargins = .zero
             itemStack.translatesAutoresizingMaskIntoConstraints = false
+            itemStack.setContentHuggingPriority(.required, for: .vertical)
+            itemStack.setContentCompressionResistancePriority(.required, for: .vertical)
+            applyListDebugStyleIfNeeded(to: itemStack, color: .systemBlue)
 
             // A. 标记 (Bullet point or Number)
             let markerLabel = UILabel()
@@ -2273,29 +2341,39 @@ public final class MarkdownViewTextKit: UIView {
             // 使用预计算的最大宽度，确保所有列表项对齐
             markerLabel.widthAnchor.constraint(equalToConstant: maxMarkerWidth).isActive = true
             markerLabel.textAlignment = .right // 数字右对齐更好看
+            applyListDebugStyleIfNeeded(to: markerLabel, color: .systemYellow)
 
             itemStack.addArrangedSubview(markerLabel)
 
             // B. 内容容器 (垂直堆叠：第一行文本 + 后续的代码块/嵌套列表等)
             let contentStack = UIStackView()
             contentStack.axis = .vertical
-            contentStack.spacing = configuration.listItemSpacing
+            // listItemSpacing 只用于“列表项之间”，项内间距由子元素自身 top/bottom spacing 决定
+            contentStack.spacing = 0
             contentStack.alignment = .fill
+            contentStack.isLayoutMarginsRelativeArrangement = false
+            contentStack.layoutMargins = .zero
             contentStack.translatesAutoresizingMaskIntoConstraints = false
+            contentStack.setContentHuggingPriority(.required, for: .vertical)
+            contentStack.setContentCompressionResistancePriority(.required, for: .vertical)
+            applyListDebugStyleIfNeeded(to: contentStack, color: .systemGreen)
 
             // ⭐️ 递归核心：遍历 ListItem 的 children 并创建视图
             // 实际内容宽度 = 总宽度 - 标记宽度 - 间距
             let itemContentWidth = contentMaxWidth - maxMarkerWidth - configuration.listMarkerSpacing
 
-            for (index, childElement) in item.children.enumerated() {
+            let visibleChildren = visibleListChildren(in: item)
+            for (index, childElement) in visibleChildren.enumerated() {
                 // 递归调用 createView
                 // 如果是列表项的第一个元素，去除顶部间距，以便跟 Marker 对齐
                 let isFirst = (index == 0)
                 // ⭐️ 列表内的元素，默认去除底部间距，完全由 contentStack.spacing 控制
                 let childView = createView(for: childElement, containerWidth: itemContentWidth, suppressTopSpacing: isFirst, suppressBottomSpacing: true)
+                applyListDebugStyleIfNeeded(to: childView, color: .systemPink)
                 contentStack.addArrangedSubview(childView)
             }
 
+            normalizeListContentStackLayout(contentStack, itemContentWidth: itemContentWidth)
             itemStack.addArrangedSubview(contentStack)
             container.addArrangedSubview(itemStack)
         }
@@ -2303,12 +2381,19 @@ public final class MarkdownViewTextKit: UIView {
         // 4. 外层包装 (处理缩进)
         let indentWrapper = UIView()
         indentWrapper.translatesAutoresizingMaskIntoConstraints = false
+        indentWrapper.setContentHuggingPriority(.required, for: .vertical)
+        indentWrapper.setContentCompressionResistancePriority(.required, for: .vertical)
         indentWrapper.addSubview(container)
-        
+
+        // 关键：只限制“不要超出 wrapper 底部”，不强制 container 贴底。
+        // 避免外层把 wrapper 拉高时，内部 list stack 被迫拉伸首项来填充高度。
+        let bottomConstraint = container.bottomAnchor.constraint(lessThanOrEqualTo: indentWrapper.bottomAnchor)
+        bottomConstraint.priority = .required
+
         // 使用标准约束替代 pinToEdges
         NSLayoutConstraint.activate([
             container.topAnchor.constraint(equalTo: indentWrapper.topAnchor),
-            container.bottomAnchor.constraint(equalTo: indentWrapper.bottomAnchor),
+            bottomConstraint,
             container.trailingAnchor.constraint(equalTo: indentWrapper.trailingAnchor),
             // ⭐️ 关键：左边设置缩进
             container.leadingAnchor.constraint(equalTo: indentWrapper.leadingAnchor, constant: currentIndent),
@@ -2319,6 +2404,95 @@ public final class MarkdownViewTextKit: UIView {
         
         return indentWrapper
     }
+
+    private func normalizeListContentStackLayout(_ contentStack: UIStackView, itemContentWidth: CGFloat) {
+        contentStack.spacing = 0
+
+        // 清理纯不可见文本子视图，避免“看起来一行但 item 高度被撑开”
+        for childView in contentStack.arrangedSubviews {
+            guard let textView = markdownTextView(in: childView),
+                  let attributed = textView.attributedText else { continue }
+
+            let normalized = normalizedAttributedTextForRendering(
+                attributed,
+                trimLeadingNewlines: true,
+                trimTrailingNewlines: true
+            )
+
+            if isEffectivelyInvisibleListText(normalized.string) {
+                childView.removeFromSuperview()
+                continue
+            }
+
+            if !attributed.isEqual(normalized) {
+                textView.attributedText = normalized
+            }
+        }
+
+        for childView in contentStack.arrangedSubviews {
+            childView.setContentHuggingPriority(.required, for: .vertical)
+            childView.setContentCompressionResistancePriority(.required, for: .vertical)
+            recursivelyUpdateLayout(for: childView, width: itemContentWidth)
+        }
+    }
+
+    private func markdownTextView(in view: UIView) -> MarkdownTextViewTK2? {
+        if let textView = view as? MarkdownTextViewTK2 {
+            return textView
+        }
+        if let textView = view.subviews.first(where: { $0 is MarkdownTextViewTK2 }) as? MarkdownTextViewTK2 {
+            return textView
+        }
+        return nil
+    }
+
+    private func isSkippableListChildElement(_ element: MarkdownRenderElement) -> Bool {
+        guard case .attributedText(let attributedString) = element else { return false }
+        return isEffectivelyInvisibleListText(attributedString.string)
+    }
+
+    private func visibleListChildren(in item: ListNodeItem) -> [MarkdownRenderElement] {
+        item.children.compactMap { normalizeListChildElement($0) }
+    }
+
+    private func normalizeListChildElement(_ element: MarkdownRenderElement) -> MarkdownRenderElement? {
+        guard case .attributedText(let attributedString) = element else { return element }
+
+        let normalized = normalizedAttributedTextForRendering(
+            attributedString,
+            trimLeadingNewlines: true,
+            trimTrailingNewlines: true
+        )
+        guard !isEffectivelyInvisibleListText(normalized.string) else { return nil }
+        return .attributedText(normalized)
+    }
+
+    private func isEffectivelyInvisibleListText(_ text: String) -> Bool {
+        text.trimmingCharacters(in: listInvisibleCharacterSet).isEmpty
+    }
+
+    private var listInvisibleCharacterSet: CharacterSet {
+        var set = CharacterSet.whitespacesAndNewlines
+        set.formUnion(.controlCharacters)
+        set.insert(charactersIn: "\u{200B}\u{200C}\u{200D}\u{FEFF}")
+        return set
+    }
+
+    private var isListLayoutDebugEnabled: Bool {
+        #if DEBUG
+        return ProcessInfo.processInfo.environment["MD_DEBUG_LIST_LAYOUT"] == "1"
+        #else
+        return false
+        #endif
+    }
+
+    private func applyListDebugStyleIfNeeded(to view: UIView, color: UIColor) {
+        guard isListLayoutDebugEnabled else { return }
+        view.backgroundColor = color.withAlphaComponent(0.08)
+        view.layer.borderWidth = 0.5
+        view.layer.borderColor = color.withAlphaComponent(0.6).cgColor
+    }
+
     /// 创建 LaTeX 公式视图（使用 LaTeXAttachment + ViewProvider 优化）
     private func createLatexView(latex: String, width: CGFloat, topSpacing: CGFloat, bottomSpacing: CGFloat) -> UIView {
         let createTime = CFAbsoluteTimeGetCurrent()
@@ -2672,6 +2846,27 @@ public final class MarkdownViewTextKit: UIView {
     }
     
     // MARK: - Text View Creation (修复版)
+
+        private func normalizedAttributedTextForRendering(
+            _ text: NSAttributedString,
+            trimLeadingNewlines: Bool = false,
+            trimTrailingNewlines: Bool = true
+        ) -> NSAttributedString {
+            let mutable = NSMutableAttributedString(attributedString: text)
+
+            if trimLeadingNewlines {
+                while mutable.length > 0, mutable.string.hasPrefix("\n") {
+                    mutable.deleteCharacters(in: NSRange(location: 0, length: 1))
+                }
+            }
+
+            if trimTrailingNewlines {
+                while mutable.length > 0, mutable.string.hasSuffix("\n") {
+                    mutable.deleteCharacters(in: NSRange(location: mutable.length - 1, length: 1))
+                }
+            }
+            return mutable
+        }
         
         private func createTextView(
             with attributedString: NSAttributedString,
@@ -2679,17 +2874,13 @@ public final class MarkdownViewTextKit: UIView {
             insets: UIEdgeInsets = .zero,
             fixedHeight: CGFloat? = nil
         ) -> UIView {
-            // ✂️ Trim trailing newlines to prevent extra vertical space
-            let mutableAttrString = NSMutableAttributedString(attributedString: attributedString)
-            while mutableAttrString.string.hasSuffix("\n") {
-                mutableAttrString.deleteCharacters(in: NSRange(location: mutableAttrString.length - 1, length: 1))
-            }
+            let normalizedText = normalizedAttributedTextForRendering(attributedString)
 
             let container = UIView()
             container.translatesAutoresizingMaskIntoConstraints = false
             
             let textView = MarkdownTextViewTK2()
-            textView.attributedText = mutableAttrString
+            textView.attributedText = normalizedText
             textView.typewriterTextMode = configuration.typewriterTextMode
             textView.typewriterHeightUpdateInterval = configuration.typewriterHeightUpdateInterval
             textView.linkTextAttributes = [

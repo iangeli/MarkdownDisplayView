@@ -90,7 +90,7 @@ Config.local.json structure:
 Add the dependency in `Package.swift`:
 ```swift
 dependencies: [
-    .package(url: "https://github.com/zjc19891106/MarkdownDisplayView.git", from: "1.7.0")
+    .package(url: "https://github.com/zjc19891106/MarkdownDisplayView.git", from: "1.7.1")
 ]
 ```
 
@@ -882,6 +882,12 @@ manager.register(codeBlockRenderer: MermaidRenderer())
 **Solution**: Library is built with Swift 5.9 to avoid strict concurrency checking
 
 ## Changelog
+
+### 1.7.1 (2026-04-03)
+
+- 🐛 **Ordered List Height Consistency Fix** - Fixed an issue where the first ordered-list item could be stretched taller than following items in some stack/reuse layouts.
+- 🧱 **List Layout Constraint Hardening** - Adjusted list wrapper constraints (`bottom <=`) and strengthened vertical hugging/compression priorities to prevent extra height from being absorbed by the first item.
+- 🧹 **List Content Normalization** - Added normalization/cleanup for invisible list text nodes (leading/trailing newlines, zero-width/control whitespace) to avoid phantom height.
 
 ### 1.7.0 (2026-04-03)
 

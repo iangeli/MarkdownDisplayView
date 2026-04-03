@@ -97,7 +97,7 @@ Config.local.json 结构如下：
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/zjc19891106/MarkdownDisplayView.git", from: "1.7.0")
+    .package(url: "https://github.com/zjc19891106/MarkdownDisplayView.git", from: "1.7.1")
 ]
 ```
 
@@ -898,6 +898,12 @@ manager.register(codeBlockRenderer: MermaidRenderer())
 **解决方案**：库已使用 Swift 5.9 构建，避免严格并发检查
 
 ## 更新日志
+
+### 1.7.1 (2026-04-03)
+
+- 🐛 **有序列表高度一致性修复** - 修复部分 Stack/ReUse 场景下“第一个有序列表项高度被异常拉高、与后续项不一致”的问题。
+- 🧱 **列表布局约束加固** - 调整列表外层约束（`bottom <=`）并增强垂直方向 hugging/compression 优先级，避免额外高度被首项吸收。
+- 🧹 **列表内容归一化清理** - 增加列表不可见文本节点清理（首尾换行、零宽字符、控制/空白字符），避免“幽灵高度”撑开列表项。
 
 ### 1.7.0 (2026-04-03)
 

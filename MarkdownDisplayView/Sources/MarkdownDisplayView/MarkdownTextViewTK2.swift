@@ -116,8 +116,8 @@ class MarkdownTextViewTK2: UIView, UIGestureRecognizerDelegate {
             }
 
             // ⭐️ 核心修复：直接更新高度约束
-            // 加上一点 buffer (e.g. 1px) 防止精度问题导致的截断
-            var newHeight = ceil(height)
+            // 加 1pt 安全 buffer，避免某些字体/行距组合在边界值时被裁剪
+            var newHeight = ceil(height + 1)
 
             // Fallback: 如果 TextKit 2 计算为 0 但有文本，使用 boundingRect 估算
             if newHeight == 0, let attrText = textContentStorage.attributedString, attrText.length > 0 {

@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 本项目的所有重要更改都将记录在此文件中。
 
+## [1.7.1] - 2026-04-03
+
+### Fixed / 修复
+- 🐛 **Ordered List Height Consistency / 有序列表高度一致性** - Fixed an issue where the first ordered-list item could be stretched taller than following items in some stack/reuse layouts / 修复部分 Stack/ReUse 场景下首个有序列表项高度被异常拉高、与后续项不一致的问题
+- 🧱 **List Layout Constraint Hardening / 列表布局约束加固** - Changed list wrapper bottom constraint to `<=` and strengthened vertical hugging/compression priorities to avoid extra height being absorbed by the first item / 调整列表外层底部约束为 `<=`，并增强垂直 hugging/compression，避免额外高度被首项吸收
+- 🧹 **List Invisible Text Cleanup / 列表不可见文本清理** - Added normalization and cleanup for invisible list text nodes (leading/trailing newlines, zero-width/control whitespace) to prevent phantom list item height / 增加列表不可见文本节点的归一化与清理（首尾换行、零宽字符、控制/空白字符），避免“幽灵高度”撑开列表项
+
 ## [1.7.0] - 2026-04-03
 
 ### Added / 新增
