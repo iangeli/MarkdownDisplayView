@@ -752,7 +752,10 @@ public final class MarkdownViewTextKit: UIView {
             let attachment = MarkdownTableAttachment(
                 data: newData,
                 config: configuration,
-                containerWidth: containerWidth
+                containerWidth: containerWidth,
+                onLinkTap: { [weak self] url in
+                    self?.handleLinkTap(url)
+                }
             )
             
             let paragraphStyle = NSMutableParagraphStyle()
@@ -2135,7 +2138,10 @@ public final class MarkdownViewTextKit: UIView {
             let attachment = MarkdownTableAttachment(
                 data: tableData,
                 config: configuration,
-                containerWidth: containerWidth
+                containerWidth: containerWidth,
+                onLinkTap: { [weak self] url in
+                    self?.handleLinkTap(url)
+                }
             )
             
             let paragraphStyle = NSMutableParagraphStyle()

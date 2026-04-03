@@ -90,7 +90,7 @@ Config.local.json structure:
 Add the dependency in `Package.swift`:
 ```swift
 dependencies: [
-    .package(url: "https://github.com/zjc19891106/MarkdownDisplayView.git", from: "1.6.8")
+    .package(url: "https://github.com/zjc19891106/MarkdownDisplayView.git", from: "1.7.0")
 ]
 ```
 
@@ -211,6 +211,12 @@ config.blockquoteTextColor = .secondaryLabel
 config.paragraphSpacing = 16
 config.headingSpacing = 20
 config.imageMaxHeight = 500
+config.lineSpacing = MarkdownLineSpacingConfiguration(
+    body: 6,
+    heading: 8,
+    quote: 6,
+    codeBlock: 4
+)
 
 // Apply configuration
 markdownView.configuration = config
@@ -266,6 +272,19 @@ public var imageMaxHeight: CGFloat         // Maximum image height
 public var imagePlaceholderHeight: CGFloat // Image placeholder height
 ```
 
+#### Line Spacing Configuration
+
+```swift
+public var lineSpacing: MarkdownLineSpacingConfiguration // Role-based line spacing config
+
+public struct MarkdownLineSpacingConfiguration {
+    public var body: CGFloat
+    public var heading: CGFloat
+    public var quote: CGFloat
+    public var codeBlock: CGFloat
+}
+```
+
 #### LaTeX Formula Configuration
 
 ```swift
@@ -292,6 +311,7 @@ public var tableMaxColumnWidth: CGFloat    // Table maximum column width (defaul
 public var tableRowHeight: CGFloat         // Table row height (default: 44)
 public var tableCellPadding: CGFloat       // Table cell padding (default: 16)
 public var tableSeparatorHeight: CGFloat   // Table separator height (default: 1)
+public var autoFixMalformedTables: Bool    // Auto-fix malformed table text from streaming/LLM output (default: true)
 ```
 
 #### List Configuration
@@ -862,6 +882,15 @@ manager.register(codeBlockRenderer: MermaidRenderer())
 **Solution**: Library is built with Swift 5.9 to avoid strict concurrency checking
 
 ## Changelog
+
+### 1.7.0 (2026-04-03)
+
+- 📊 **Markdown Table Column Alignment** - Added support for table alignment syntax (`:---`, `:---:`, `---:`) and applied alignment per column.
+- 🛠 **Malformed Table Auto-Fix** - Added `autoFixMalformedTables` (default: `true`) to normalize common broken table output (isolated `|`, accidental blank lines inside table blocks).
+- ✍️ **Configurable Line Spacing** - Added `lineSpacing` configuration for `body`, `heading`, `quote`, `codeBlock`, replacing fixed line spacing constants.
+- 🔗 **Table Link Tap Callback** - Table cells keep using `UILabel` for better scrolling performance; link tap now routes through table cell selection and triggers existing `onLinkTap`.
+- 🐛 **Touch Routing Fix** - Fixed gesture conflict where outer TextKit tap handling could swallow table attachment touches.
+- ⚠️ **Configuration Cleanup** - Removed table-level alignment override config; table text alignment now follows Markdown table syntax (fallback: left).
 
 ### 1.6.9 (2026-03-17)
 

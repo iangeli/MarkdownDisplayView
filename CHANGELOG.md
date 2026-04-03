@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 本项目的所有重要更改都将记录在此文件中。
 
+## [1.7.0] - 2026-04-03
+
+### Added / 新增
+- 📊 **Markdown Table Column Alignment / Markdown 表格列对齐支持** - Added support for table alignment syntax (`:---`, `:---:`, `---:`) and applied alignment per column / 新增 `:---`、`:---:`、`---:` 对齐语法解析，并按列应用左/中/右对齐
+- 🛠 **Malformed Table Auto-Fix / 异常表格自动修复** - Added `autoFixMalformedTables` (default: `true`) to normalize common broken table output (isolated `|`, accidental blank lines inside tables) / 新增 `autoFixMalformedTables`（默认 `true`），自动修正常见异常输出（孤立 `|`、表格块内误空行）
+- ✍️ **Configurable Line Spacing / 行间距配置化** - Added `lineSpacing` configuration for `body`, `heading`, `quote`, `codeBlock`, replacing fixed line spacing constants / 新增 `lineSpacing` 配置（`body`、`heading`、`quote`、`codeBlock`），替代固定行间距常量
+
+### Changed / 变更
+- 🔗 **Table Link Tap Callback / 表格链接点击回调** - Keep `UILabel` in table cells for better scrolling performance; link taps now route through cell selection and existing `onLinkTap` callback chain / 表格 cell 保持 `UILabel`（滚动性能更优），通过 cell 点击识别链接并复用 `onLinkTap` 回调链路
+- ⚠️ **Configuration Cleanup / 配置项收敛** - Removed table-level alignment override config; table text alignment now follows Markdown syntax (fallback: left) / 移除表格文本对齐覆盖配置项；表格文本对齐以 Markdown 语法为准（默认左对齐）
+
+### Fixed / 修复
+- 🐛 **Touch Routing Fix / 触摸路由修复** - Fixed gesture conflict where outer TextKit tap handling could swallow table attachment touches and prevent link callbacks / 修复外层 TextKit 点击手势可能抢占表格附件触摸，导致表格链接点击回调不生效
+
 ## [1.6.0] - 2026-01-30
 
 ### Added / 新增

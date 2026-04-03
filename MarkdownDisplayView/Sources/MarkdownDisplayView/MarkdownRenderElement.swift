@@ -12,6 +12,17 @@ import UIKit
 public struct MarkdownTableData: Equatable {
     var headers: [NSAttributedString]
     var rows: [[NSAttributedString]]
+    var columnAlignments: [NSTextAlignment?]
+
+    init(
+        headers: [NSAttributedString],
+        rows: [[NSAttributedString]],
+        columnAlignments: [NSTextAlignment?] = []
+    ) {
+        self.headers = headers
+        self.rows = rows
+        self.columnAlignments = columnAlignments
+    }
 }
 
 public struct ListNodeItem: Equatable {
@@ -151,6 +162,32 @@ public struct SyntaxHighlightColors: Sendable {
     }
 }
 
+// MARK: - Line Spacing Configuration
+
+/// 行间距配置（仅用于替换硬编码的 lineSpacing 常量，不改变现有样式体系）
+public struct MarkdownLineSpacingConfiguration: Sendable {
+    public var body: CGFloat
+    public var heading: CGFloat
+    public var quote: CGFloat
+    public var codeBlock: CGFloat
+
+    public init(
+        body: CGFloat = 4,
+        heading: CGFloat = 4,
+        quote: CGFloat = 4,
+        codeBlock: CGFloat = 4
+    ) {
+        self.body = body
+        self.heading = heading
+        self.quote = quote
+        self.codeBlock = codeBlock
+    }
+
+    public static var `default`: MarkdownLineSpacingConfiguration {
+        MarkdownLineSpacingConfiguration()
+    }
+}
+
 // MARK: - MarkdownConfiguration
 public struct MarkdownConfiguration: Sendable {
     
@@ -216,6 +253,7 @@ public struct MarkdownConfiguration: Sendable {
     public var tableRowHeight: CGFloat = 44             // 表格行高
     public var tableCellPadding: CGFloat = 16           // 表格单元格内边距（左右各16）
     public var tableSeparatorHeight: CGFloat = 1        // 表格分隔线高度
+    public var autoFixMalformedTables: Bool = true      // 自动修复常见表格断裂（孤立 |、表格中的误空行）
 
     // MARK: - 列表配置
     public var listItemSpacing: CGFloat = 4             // 列表项之间的间距
@@ -238,6 +276,8 @@ public struct MarkdownConfiguration: Sendable {
     public var streamingHapticFeedbackStyle: StreamingHapticFeedbackStyle = .none
     /// 震动反馈的最小间隔时间（秒），避免过于频繁的震动，默认 0.05 秒
     public var streamingHapticMinInterval: TimeInterval = 0.05
+    /// 行间距配置（用于替换渲染层固定的 lineSpacing 常量）
+    public var lineSpacing: MarkdownLineSpacingConfiguration = .default
     
     public static var `default`: MarkdownConfiguration {
         MarkdownConfiguration(

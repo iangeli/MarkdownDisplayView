@@ -43,10 +43,15 @@ public final class MarkdownRenderer {
         tableOfContents: [MarkdownTOCItem],
         tocSectionId: String?
     ) {
-        // 1. 预处理：识别自定义语法并替换为占位符
-        let (preprocessedMarkdown, customDataMap) = preprocessCustomSyntax(in: markdown)
+        // 1. 预处理：修复常见坏格式（如表格中断）
+        let normalizedMarkdown = configuration.autoFixMalformedTables
+            ? normalizeMalformedTables(in: markdown)
+            : markdown
 
-        // 2. 解析预处理后的 Markdown
+        // 2. 预处理：识别自定义语法并替换为占位符
+        let (preprocessedMarkdown, customDataMap) = preprocessCustomSyntax(in: normalizedMarkdown)
+
+        // 3. 解析预处理后的 Markdown
         var result = parser.parseAndRender(preprocessedMarkdown)
 
         // 🔷 调试：打印解析后的元素，查找占位符
@@ -74,7 +79,7 @@ public final class MarkdownRenderer {
         }
         print("🔷[MDEXT] ===== End Parsed Elements =====")
 
-        // 3. 后处理：将占位符替换为自定义元素
+        // 4. 后处理：将占位符替换为自定义元素
         if !customDataMap.isEmpty {
             result.elements = restoreCustomElements(in: result.elements, customDataMap: customDataMap)
         }
@@ -83,6 +88,141 @@ public final class MarkdownRenderer {
     }
 
     // MARK: - 预处理：占位符替换策略
+
+    /// 修复常见的表格断裂输入：
+    /// 1) 表头后插入孤立 `|` 行
+    /// 2) 表格内部被误插入空行
+    /// 仅在普通 Markdown 上生效，不处理 fenced code block 内文本。
+    private func normalizeMalformedTables(in markdown: String) -> String {
+        let lines = markdown.components(separatedBy: .newlines)
+        guard lines.count > 2 else { return markdown }
+
+        var normalized: [String] = []
+        var index = 0
+        var activeFenceMarker: Character?
+
+        while index < lines.count {
+            let line = lines[index]
+
+            if let fenceMarker = codeFenceMarker(in: line) {
+                if activeFenceMarker == nil {
+                    activeFenceMarker = fenceMarker
+                } else if activeFenceMarker == fenceMarker {
+                    activeFenceMarker = nil
+                }
+                normalized.append(line)
+                index += 1
+                continue
+            }
+
+            if activeFenceMarker != nil {
+                normalized.append(line)
+                index += 1
+                continue
+            }
+
+            if index + 1 < lines.count,
+               isLikelyTableRow(lines[index]),
+               isTableSeparatorRow(lines[index + 1]) {
+                normalized.append(lines[index])
+                normalized.append(lines[index + 1])
+                index += 2
+
+                while index < lines.count {
+                    let currentLine = lines[index]
+                    let trimmed = currentLine.trimmingCharacters(in: .whitespaces)
+
+                    // 修复孤立的 `|` 行
+                    if isStandalonePipeLine(trimmed) {
+                        index += 1
+                        continue
+                    }
+
+                    if trimmed.isEmpty {
+                        // 如果后续还是表格行，则认为这是误插入空行，跳过
+                        if let nextNonEmpty = nextNonEmptyLineIndex(in: lines, from: index + 1),
+                           isLikelyTableRow(lines[nextNonEmpty]) {
+                            index += 1
+                            continue
+                        }
+                        // 否则视为表格结束，保留空行
+                        normalized.append(currentLine)
+                        index += 1
+                        break
+                    }
+
+                    if isLikelyTableRow(currentLine) {
+                        normalized.append(currentLine)
+                        index += 1
+                        continue
+                    }
+
+                    // 非表格行，表格结束
+                    normalized.append(currentLine)
+                    index += 1
+                    break
+                }
+                continue
+            }
+
+            normalized.append(line)
+            index += 1
+        }
+
+        return normalized.joined(separator: "\n")
+    }
+
+    private func codeFenceMarker(in line: String) -> Character? {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        guard let first = trimmed.first, first == "`" || first == "~" else { return nil }
+        let fenceCount = trimmed.prefix { $0 == first }.count
+        return fenceCount >= 3 ? first : nil
+    }
+
+    private func isLikelyTableRow(_ line: String) -> Bool {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty, trimmed.contains("|") else { return false }
+
+        let cells = trimmed
+            .split(separator: "|", omittingEmptySubsequences: false)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+        let nonEmptyCellCount = cells.filter { !$0.isEmpty }.count
+        return nonEmptyCellCount >= 2
+    }
+
+    private func isTableSeparatorRow(_ line: String) -> Bool {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        guard trimmed.contains("|") else { return false }
+
+        let cells = trimmed
+            .split(separator: "|", omittingEmptySubsequences: false)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+
+        guard cells.count >= 2 else { return false }
+        return cells.allSatisfy { isTableSeparatorCell($0) }
+    }
+
+    private func isTableSeparatorCell(_ cell: String) -> Bool {
+        let stripped = cell.trimmingCharacters(in: CharacterSet(charactersIn: ":"))
+        guard stripped.count >= 3 else { return false }
+        return stripped.allSatisfy { $0 == "-" }
+    }
+
+    private func isStandalonePipeLine(_ trimmedLine: String) -> Bool {
+        guard !trimmedLine.isEmpty, trimmedLine.contains("|") else { return false }
+        return trimmedLine.allSatisfy { $0 == "|" || $0.isWhitespace }
+    }
+
+    private func nextNonEmptyLineIndex(in lines: [String], from start: Int) -> Int? {
+        guard start < lines.count else { return nil }
+        for idx in start..<lines.count {
+            if !lines[idx].trimmingCharacters(in: .whitespaces).isEmpty {
+                return idx
+            }
+        }
+        return nil
+    }
 
     /// 预处理：扫描自定义语法，替换为占位符
     private func preprocessCustomSyntax(in markdown: String) -> (String, [String: CustomElementData]) {

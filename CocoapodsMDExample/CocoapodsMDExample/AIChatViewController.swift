@@ -988,7 +988,7 @@ final class AIChatMessageCell: UITableViewCell {
         bubbleView.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(bubbleView)
         var config = MarkdownConfiguration.default
-        
+        config.lineSpacing = .init(body: 8,heading: 12,quote: 6,codeBlock: 4)
         config.typewriterTextMode = .append
         config.typewriterHeightUpdateInterval = 20
         config.streamMinModuleLength = 20

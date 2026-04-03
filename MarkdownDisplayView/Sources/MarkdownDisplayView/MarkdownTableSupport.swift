@@ -190,10 +190,65 @@ class MarkdownTableCell: UICollectionViewCell {
     }
     
     required init?(coder: NSCoder) { fatalError() }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        label.attributedText = nil
+    }
     
-    func configure(text: NSAttributedString, isHeader: Bool, borderColor: UIColor) {
-        label.attributedText = text
+    func configure(
+        text: NSAttributedString,
+        isHeader: Bool,
+        borderColor: UIColor,
+        textAlignment: NSTextAlignment
+    ) {
+        label.textAlignment = textAlignment
+        label.attributedText = text.withOverriddenParagraphAlignment(textAlignment)
         border.backgroundColor = borderColor
+    }
+
+    func firstLinkURL() -> URL? {
+        guard let attrText = label.attributedText, attrText.length > 0 else { return nil }
+
+        var foundURL: URL?
+        attrText.enumerateAttribute(
+            .link,
+            in: NSRange(location: 0, length: attrText.length),
+            options: []
+        ) { value, _, stop in
+            if let url = value as? URL {
+                foundURL = url
+                stop.pointee = true
+            } else if let urlString = value as? String, let url = URL(string: urlString) {
+                foundURL = url
+                stop.pointee = true
+            }
+        }
+
+        return foundURL
+    }
+}
+
+private extension NSAttributedString {
+    func withOverriddenParagraphAlignment(_ alignment: NSTextAlignment) -> NSAttributedString {
+        guard length > 0 else { return self }
+        let mutable = NSMutableAttributedString(attributedString: self)
+        let fullRange = NSRange(location: 0, length: mutable.length)
+
+        // 表格单元格文本使用富文本渲染，段落样式中的 alignment 优先级高于控件默认对齐。
+        // 这里统一覆盖为列对齐，避免 Markdown 默认段落样式把对齐“拉回左侧”。
+        mutable.enumerateAttribute(.paragraphStyle, in: fullRange, options: []) { value, range, _ in
+            let paragraphStyle: NSMutableParagraphStyle
+            if let style = value as? NSParagraphStyle {
+                paragraphStyle = style.mutableCopy() as? NSMutableParagraphStyle ?? NSMutableParagraphStyle()
+            } else {
+                paragraphStyle = NSMutableParagraphStyle()
+            }
+            paragraphStyle.alignment = alignment
+            mutable.addAttribute(.paragraphStyle, value: paragraphStyle, range: range)
+        }
+
+        return mutable
     }
 }
 
@@ -222,6 +277,7 @@ class MarkdownTableCollectionView: UIView, UICollectionViewDataSource, UICollect
         collectionView.backgroundColor = .clear
         collectionView.dataSource = self
         collectionView.delegate = self
+        collectionView.allowsSelection = true
         collectionView.register(MarkdownTableCell.self, forCellWithReuseIdentifier: MarkdownTableCell.identifier)
         
         // 允许水平滚动
@@ -270,11 +326,26 @@ class MarkdownTableCollectionView: UIView, UICollectionViewDataSource, UICollect
         } else {
             text = NSAttributedString(string: "")
         }
+
+        // 列对齐优先使用 Markdown 表格语法中的列对齐，缺省时回退为左对齐
+        let textAlignment = attachment.tableData.columnAlignments[safe: indexPath.item]
+            .flatMap { $0 } ?? .left
         
         // Use semi-transparent border to mimic grid
-        cell.configure(text: text, isHeader: isHeader, borderColor: attachment.configuration.tableBorderColor.withAlphaComponent(0.3))
+        cell.configure(
+            text: text,
+            isHeader: isHeader,
+            borderColor: attachment.configuration.tableBorderColor.withAlphaComponent(0.3),
+            textAlignment: textAlignment
+        )
         
         return cell
+    }
+
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        guard let cell = collectionView.cellForItem(at: indexPath) as? MarkdownTableCell else { return }
+        guard let url = cell.firstLinkURL() else { return }
+        attachment.onLinkTap?(url)
     }
 }
 
@@ -286,10 +357,17 @@ class MarkdownTableAttachment: NSTextAttachment {
     let columnWidths: [CGFloat]
     let rowHeights: [CGFloat]
     let totalSize: CGSize
+    let onLinkTap: ((URL) -> Void)?
     
-    init(data: MarkdownTableData, config: MarkdownConfiguration, containerWidth: CGFloat) {
+    init(
+        data: MarkdownTableData,
+        config: MarkdownConfiguration,
+        containerWidth: CGFloat,
+        onLinkTap: ((URL) -> Void)? = nil
+    ) {
         self.tableData = data
         self.configuration = config
+        self.onLinkTap = onLinkTap
         
         // Pre-calculate layout
         let result = MarkdownTableLayoutCalculator.calculate(

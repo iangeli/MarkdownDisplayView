@@ -603,6 +603,17 @@ final class MarkdownParser: MarkdownParserProtocol {
     private func renderTableData(_ table: Table) -> MarkdownTableData {
         var headers: [NSAttributedString] = []
         var rows: [[NSAttributedString]] = []
+        let columnAlignments: [NSTextAlignment?] = table.columnAlignments.map { alignment in
+            guard let alignment else { return nil }
+            switch alignment {
+            case .left:
+                return .left
+            case .center:
+                return .center
+            case .right:
+                return .right
+            }
+        }
         
         isInTable = true  // 添加这行
         
@@ -622,7 +633,7 @@ final class MarkdownParser: MarkdownParserProtocol {
         
         isInTable = false  // 添加这行
         
-        return MarkdownTableData(headers: headers, rows: rows)
+        return MarkdownTableData(headers: headers, rows: rows, columnAlignments: columnAlignments)
     }
     
     private func renderTableCellContent(_ cell: Table.Cell) -> NSAttributedString {
@@ -725,7 +736,7 @@ final class MarkdownParser: MarkdownParserProtocol {
         let paragraphStyle = NSMutableParagraphStyle()
         paragraphStyle.paragraphSpacing = 3
         paragraphStyle.lineHeightMultiple = 1.2
-        paragraphStyle.lineSpacing = 4
+        paragraphStyle.lineSpacing = configuration.lineSpacing.heading
         
         let range = NSRange(location: 0, length: result.length)
         result.addAttributes([
@@ -747,7 +758,9 @@ final class MarkdownParser: MarkdownParserProtocol {
         }
         
         let paragraphStyle = NSMutableParagraphStyle()
-        paragraphStyle.lineSpacing = 4
+        paragraphStyle.lineSpacing = isInBlockquote
+            ? configuration.lineSpacing.quote
+            : configuration.lineSpacing.body
         
         // 只有不在列表中时才添加段落间距
         if listDepth == 0 {
@@ -836,7 +849,7 @@ final class MarkdownParser: MarkdownParserProtocol {
     // 在 MarkdownRendererTK2 中添加缓存的 attributes
     private lazy var defaultTextAttributes: [NSAttributedString.Key: Any] = {
         let paragraphStyle = NSMutableParagraphStyle()
-        paragraphStyle.lineSpacing = 4
+        paragraphStyle.lineSpacing = configuration.lineSpacing.body
         return [
             .font: configuration.bodyFont,
             .foregroundColor: configuration.textColor,
@@ -846,7 +859,7 @@ final class MarkdownParser: MarkdownParserProtocol {
 
     private lazy var blockquoteTextAttributes: [NSAttributedString.Key: Any] = {
         let paragraphStyle = NSMutableParagraphStyle()
-        paragraphStyle.lineSpacing = 4
+        paragraphStyle.lineSpacing = configuration.lineSpacing.quote
         return [
             .font: configuration.bodyFont,
             .foregroundColor: configuration.blockquoteTextColor,
@@ -1020,7 +1033,7 @@ final class MarkdownParser: MarkdownParserProtocol {
 
         // 添加段落样式
         let paragraphStyle = NSMutableParagraphStyle()
-        paragraphStyle.lineSpacing = 4
+        paragraphStyle.lineSpacing = configuration.lineSpacing.codeBlock
         result.addAttribute(.paragraphStyle, value: paragraphStyle, range: NSRange(location: 0, length: result.length))
 
         return result

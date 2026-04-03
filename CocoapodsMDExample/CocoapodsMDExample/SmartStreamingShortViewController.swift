@@ -16,11 +16,59 @@ final class SmartStreamingShortViewController: UIViewController {
     private var currentChunkIndex = 0
 
     private let streamChunks: [String] = [
-        "# 智能流式（短文本示例）\n",
-        "这是一个**短文本**示例，用于演示 SmartBuffer 的自动分块能力。\n\n",
-        "## 核心特性\n- 自动识别完整模块\n- 避免 Markdown 语法被截断\n- 适合小段文本实时追加\n\n",
-        "```swift\nlet message = \"Hello, Smart Stream\"\nprint(message)\n```\n\n",
-        "> 结束：这一行会作为完整块展示。\n"
+        """
+        好嘞！下面用 4 个表格快速验证对齐能力👇
+
+        **主题：左对齐 / 居中 / 右对齐 / 混合对齐**
+
+        ---
+
+        **1）左对齐（`:---`）**
+
+        | 字段 | 对齐验证说明（这一列故意很长，用于拉宽列宽） | 数值 |
+        | :--- | :--- | :--- |
+        | A | 短词 | 1 |
+        | B | 中等长度文本 | 20 |
+        | C | x | 300 |
+
+        """,
+        """
+        ---
+
+        **2）居中（`:--:`）**
+
+        | 字段 | 对齐验证说明（这一列故意很长，用于拉宽列宽） | 数值 |
+        | :--: | :--: | :--: |
+        | A | 短词 | 1 |
+        | B | 中等长度文本 | 20 |
+        | C | x | 300 |
+
+        """,
+        """
+        ---
+
+        **3）右对齐（`---:`）**
+
+        | 字段 | 对齐验证说明（这一列故意很长，用于拉宽列宽） | 数值 |
+        | ---: | ---: | ---: |
+        | A | 短词 | 1 |
+        | B | 中等长度文本 | 20 |
+        | C | x | 300 |
+
+        """,
+        """
+        ---
+
+        **4）混合对齐（第一列左、第二列中、第三列右）**
+
+        | 名称 | 状态 | 分数 |
+        | :--- | :--: | ---: |
+        | ultra-long-metric-name-demo | OK | 7 |
+        | m | HOLD | 88 |
+        | s | FAIL | 1000 |
+
+        提示：如果你看到 4 个表格的文本对齐不同，说明列对齐语法已生效。
+        """
     ]
 
     private lazy var closeButton: UIButton = {
@@ -64,6 +112,9 @@ final class SmartStreamingShortViewController: UIViewController {
 
         scrollableMarkdownView.translatesAutoresizingMaskIntoConstraints = false
         scrollableMarkdownView.alwaysBounceVertical = true
+        scrollableMarkdownView.onLinkTap = { [weak self] url in
+            self?.handleLinkTap(url)
+        }
 
         NSLayoutConstraint.activate([
             titleLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
@@ -113,6 +164,12 @@ final class SmartStreamingShortViewController: UIViewController {
     private func stopStreaming() {
         streamTimer?.invalidate()
         streamTimer = nil
+    }
+
+    private func handleLinkTap(_ url: URL) {
+        if UIApplication.shared.canOpenURL(url) {
+            UIApplication.shared.open(url)
+        }
     }
 
     @objc private func closeTapped() {

@@ -12,7 +12,7 @@ import Foundation
 
 /// 使用 TextKit 2 的自定义 TextView
 @available(iOS 15.0, *)
-class MarkdownTextViewTK2: UIView {
+class MarkdownTextViewTK2: UIView, UIGestureRecognizerDelegate {
 
     private let textLayoutManager: NSTextLayoutManager
     private let textContentStorage: NSTextContentStorage
@@ -154,7 +154,25 @@ class MarkdownTextViewTK2: UIView {
 
     private func setupGestures() {
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleTap(_:)))
+        // 不拦截子视图触摸（例如表格 CollectionView 的 cell 点击）
+        tapGesture.cancelsTouchesInView = false
+        tapGesture.delegate = self
         addGestureRecognizer(tapGesture)
+    }
+
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        guard gestureRecognizer.view === self else { return true }
+        guard let touchedView = touch.view else { return true }
+
+        // 附件视图（表格等）由其自身处理点击，避免被外层文本 Tap 手势抢占
+        for provider in attachmentProviders.values {
+            guard let attachmentView = provider.view else { continue }
+            if touchedView === attachmentView || touchedView.isDescendant(of: attachmentView) {
+                return false
+            }
+        }
+
+        return true
     }
 
     private func updateContent() {
