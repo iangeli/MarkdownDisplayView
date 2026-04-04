@@ -97,7 +97,7 @@ Config.local.json 结构如下：
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/zjc19891106/MarkdownDisplayView.git", from: "1.7.1")
+    .package(url: "https://github.com/zjc19891106/MarkdownDisplayView.git", from: "1.7.2")
 ]
 ```
 
@@ -698,6 +698,9 @@ scrollableMarkdownView.markdownView.configuration = config
 
 **核心特性**：
 - **智能缓冲**：自动缓冲未完成的 Markdown 结构（未闭合的代码块、表格、LaTeX 公式）
+- **纯文本识别**：`MarkdownStreamBuffer` 新增 `isPlainText()` 检测，用于识别非 Markdown 内容
+- **纯文本更快输出**：对于没有 Markdown 标记的纯文本，模块允许在 `\n` 边界提交，不再必须等待 `\n\n`
+- **Markdown 行为不变**：Markdown 内容仍按 `\n\n` 段落边界提交
 - **增量渲染**：完整模块立即渲染，未完成内容继续缓冲等待
 - **打字机效果**：渲染内容平滑的逐字显示动画
 
@@ -898,6 +901,12 @@ manager.register(codeBlockRenderer: MermaidRenderer())
 **解决方案**：库已使用 Swift 5.9 构建，避免严格并发检查
 
 ## 更新日志
+
+### 1.7.2 (2026-04-04)
+
+- ➕ **新增 `isPlainText()` 检测** - 在 `MarkdownStreamBuffer` 中新增 `isPlainText()`，用于识别非 Markdown 内容。
+- ⚡ **纯文本流式输出加速** - 对于没有 Markdown 标记的纯文本，模块可在 `\n` 边界提交，不再强制等待 `\n\n`，以更快触发打字机输出。
+- ✅ **Markdown 输出行为保持不变** - Markdown 内容仍然等待 `\n\n` 段落边界后提交。
 
 ### 1.7.1 (2026-04-03)
 

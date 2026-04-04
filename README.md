@@ -90,7 +90,7 @@ Config.local.json structure:
 Add the dependency in `Package.swift`:
 ```swift
 dependencies: [
-    .package(url: "https://github.com/zjc19891106/MarkdownDisplayView.git", from: "1.7.1")
+    .package(url: "https://github.com/zjc19891106/MarkdownDisplayView.git", from: "1.7.2")
 ]
 ```
 
@@ -682,6 +682,9 @@ scrollableMarkdownView.markdownView.configuration = config
 
 **Key Features**:
 - **Smart Buffering**: Automatically buffers incomplete Markdown structures (unclosed code blocks, tables, LaTeX)
+- **`isPlainText()` Detection**: `MarkdownStreamBuffer` detects non-Markdown content
+- **Faster Plain Text Streaming**: For plain text without Markdown markers, module submission can happen at `\n` boundaries instead of strictly waiting for `\n\n`
+- **Markdown Behavior Unchanged**: Markdown content still waits for `\n\n` paragraph boundaries
 - **Incremental Rendering**: Renders complete modules immediately while buffering incomplete content
 - **Typewriter Effect**: Smooth character-by-character animation for rendered content
 
@@ -882,6 +885,12 @@ manager.register(codeBlockRenderer: MermaidRenderer())
 **Solution**: Library is built with Swift 5.9 to avoid strict concurrency checking
 
 ## Changelog
+
+### 1.7.2 (2026-04-04)
+
+- ➕ **`isPlainText()` Detection** - Added `isPlainText()` in `MarkdownStreamBuffer` to identify non-Markdown content.
+- ⚡ **Faster Plain-Text Output** - For plain text without Markdown markers, modules can now be submitted at `\n` boundaries instead of requiring `\n\n`, enabling faster typewriter output.
+- ✅ **Markdown Flow Unchanged** - Markdown content behavior is unchanged and still waits for `\n\n` paragraph boundaries.
 
 ### 1.7.1 (2026-04-03)
 
