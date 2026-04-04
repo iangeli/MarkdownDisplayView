@@ -139,7 +139,8 @@ final class MarkdownStreamBuffer {
         if boundaries.isEmpty {
             // 检查是否有足够的纯文本内容（无标题的情况）
             let remainingText = String(textToAnalyze.dropFirst(startPosition))
-            if remainingText.count > minModuleLength * 3 && remainingText.hasSuffix("\n\n") {
+            if remainingText.count > minModuleLength * 3 && remainingText.hasSuffix("\n\n")
+                || (isPlainText(remainingText) && remainingText.count > minModuleLength && remainingText.hasSuffix("\n")) {
                 // 有大量文本且以双换行结束，可以提交
                 let completeText = remainingText.trimmingCharacters(in: .whitespacesAndNewlines)
                 if !completeText.isEmpty {
@@ -261,6 +262,21 @@ final class MarkdownStreamBuffer {
         return nil
     }
 
+    /// 判断文本是否为纯文本（不包含 Markdown 块级/行级标记）
+    /// 用于决定是否可以在 \n（而非 \n\n）处提前提交模块
+    private func isPlainText(_ text: String) -> Bool {
+        let markdownMarkers = ["#", "> ", "```", "---", "***", "- ", "* ", "+ ", "| ",
+                                "1. ", "2. ", "3. ", "![", "[$"]
+        for marker in markdownMarkers {
+            if text.contains(marker) { return false }
+        }
+        // 内联标记不影响段落结构，但仍算 markdown 内容
+        if text.contains("**") || text.contains("__") || text.contains("`") || text.contains("$$") {
+            return false
+        }
+        return true
+    }
+
     /// 查找模块边界（自适应策略）
     /// ⭐️ 自适应分割策略：
     /// 1. 如果有多个一级标题 → 按一级标题分割
@@ -354,7 +370,8 @@ final class MarkdownStreamBuffer {
             if contentAfter > minModuleLength && text.hasSuffix("\n\n") {
                 boundaries.append(text.count)
             }
-        } else if text.count > startPosition + minModuleLength * 2 && text.hasSuffix("\n\n") {
+        } else if text.count > startPosition + minModuleLength * 2 && text.hasSuffix("\n\n")
+            || (isPlainText(text) && text.count > startPosition + minModuleLength && text.hasSuffix("\n")) {
             // 没有标题，但有足够内容且以双换行结束
             boundaries.append(text.count)
         }
