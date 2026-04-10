@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 本项目的所有重要更改都将记录在此文件中。
 
+## [1.7.4] - 2026-04-10
+
+### Added / 新增
+- 📐 **Whole-List Top/Bottom Padding / 整个列表头尾内边距** - Added `listTopPadding` and `listBottomPadding` so the entire list wrapper can apply configurable top/bottom spacing without changing per-item layout / 新增 `listTopPadding` 和 `listBottomPadding`，支持为整个列表 wrapper 配置顶部/底部间距，而不改变每个列表项自身布局
+
+### Fixed / 修复
+- 📏 **Height Measurement Stabilization / 高度测量稳定性修复** - Hardened `notifyHeightChange` with width fallback, frame-height fallback, and transient-zero suppression to avoid `0 ↔ actual height` jumps during initial layout or rapid updates / 加固 `notifyHeightChange`：增加宽度兜底、基于 frame 的高度回退，以及临时 `0` 高度抑制，避免初始布局或快速更新时出现 `0 ↔ 实际高度` 来回跳变
+- 🌊 **Paragraph-Level Streaming Fallback / 段落级流式切分回退** - Real streaming now emits single-heading or heading-less Markdown by paragraph boundaries when heading-based segmentation is unavailable, while skipping fenced code blocks / 当标题数量不足以用于模块切分时，真流式模式现在会按段落边界输出单标题或无标题 Markdown，同时跳过 fenced code block 内部的空段切分
+
 ## [1.7.1] - 2026-04-03
 
 ### Fixed / 修复

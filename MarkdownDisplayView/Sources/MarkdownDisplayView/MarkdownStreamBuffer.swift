@@ -293,88 +293,93 @@ final class MarkdownStreamBuffer {
         // 收集各级标题位置（只收集 startPosition 之后的标题）
         var h1Positions: [Int] = []  // # 一级标题
         var h2Positions: [Int] = []  // ## 二级标题
+        var paragraphBoundaries: [Int] = []
 
         // 追踪代码块状态
         var isInsideCodeBlock = false
+        var paragraphStart = startPosition
+        var hasRenderableContentSinceParagraphStart = false
 
         for (index, line) in lines.enumerated() {
             let trimmedLine = line.trimmingCharacters(in: .whitespaces)
+            let isFenceMarker = trimmedLine.hasPrefix("```")
+            let isOutsideCodeBlock = !isInsideCodeBlock
+            let nextPosition = currentPosition + line.count + (index < lines.count - 1 ? 1 : 0)
+            let isWithinSearchRange = currentPosition >= startPosition
 
-            // 检测代码块边界
-            if trimmedLine.hasPrefix("```") {
-                isInsideCodeBlock = !isInsideCodeBlock
-            }
+            let isH1 = isOutsideCodeBlock && isWithinSearchRange
+                && trimmedLine.hasPrefix("# ") && !trimmedLine.hasPrefix("## ")
+            let isH2 = isOutsideCodeBlock && isWithinSearchRange
+                && trimmedLine.hasPrefix("## ") && !trimmedLine.hasPrefix("### ")
 
             // ⭐️ 关键修复：只收集 startPosition 之后的标题
             // 这样避免重复处理已经解析过的标题
-            if !isInsideCodeBlock && currentPosition >= startPosition {
-                // 一级标题：以 `# ` 开头但不是 `## `
-                if trimmedLine.hasPrefix("# ") && !trimmedLine.hasPrefix("## ") {
-                    h1Positions.append(currentPosition)
+            if isH1 {
+                h1Positions.append(currentPosition)
+            } else if isH2 {
+                h2Positions.append(currentPosition)
+            }
+
+            if isWithinSearchRange {
+                if !trimmedLine.isEmpty && !isH1 && !isH2 {
+                    hasRenderableContentSinceParagraphStart = true
                 }
-                // 二级标题：以 `## ` 开头但不是 `### `
-                else if trimmedLine.hasPrefix("## ") && !trimmedLine.hasPrefix("### ") {
-                    h2Positions.append(currentPosition)
+
+                // fallback 段落切分只在代码块外生效，且标题后的第一个空行不会单独切出“只有标题”的模块
+                if isOutsideCodeBlock && trimmedLine.isEmpty && hasRenderableContentSinceParagraphStart {
+                    let moduleLength = nextPosition - paragraphStart
+                    if moduleLength >= minModuleLength {
+                        paragraphBoundaries.append(nextPosition)
+                        paragraphStart = nextPosition
+                        hasRenderableContentSinceParagraphStart = false
+                    }
                 }
             }
 
-            currentPosition += line.count + (index < lines.count - 1 ? 1 : 0)
+            if isFenceMarker {
+                isInsideCodeBlock.toggle()
+            }
+
+            currentPosition = nextPosition
         }
 
         // ⭐️ 自适应选择分割级别
-        var headingPositions: [Int]
         var headingLevel: String
+        var boundaries: [Int] = []
 
         if h1Positions.count >= 2 {
             // 策略1：有多个一级标题，按一级标题分割
-            headingPositions = h1Positions
             headingLevel = "H1"
-        } else if h2Positions.count >= 2 {
-            // 策略2：只有一个/没有一级标题，但有多个二级标题，按二级标题分割
-            headingPositions = h2Positions
-            headingLevel = "H2"
-        } else {
-            // 策略3：没有足够的标题，按双换行分割
-            headingPositions = []
-            headingLevel = "paragraph"
-        }
-
-        print("[StreamBuffer] 📊 Strategy: \(headingLevel), H1=\(h1Positions.count), H2=\(h2Positions.count), startPos=\(startPosition)")
-
-        // ⭐️ 核心修复：正确计算边界
-        // 边界 = 下一个标题的开始位置（即当前模块的结束位置）
-        var boundaries: [Int] = []
-
-        if headingPositions.count >= 2 {
-            // 有多个标题：每个标题（除了最后一个）后面的标题位置就是它的边界
-            // 例如：标题A在位置100，标题B在位置200，那么模块A的边界是200
-            for i in 1..<headingPositions.count {
-                let boundary = headingPositions[i]
-                // 只添加在 startPosition 之后的边界
-                if boundary > startPosition {
-                    boundaries.append(boundary)
-                }
+            for boundary in h1Positions.dropFirst() where boundary > startPosition {
+                boundaries.append(boundary)
             }
 
-            // 检查最后一个模块是否完整（以双换行结束）
-            if let lastHeadingPos = headingPositions.last {
+            if let lastHeadingPos = h1Positions.last {
                 let contentAfterLast = text.count - lastHeadingPos
                 if contentAfterLast > minModuleLength && text.hasSuffix("\n\n") {
                     boundaries.append(text.count)
                 }
             }
-        } else if headingPositions.count == 1 {
-            // 只有一个标题：检查标题后的内容是否完整
-            let headingPos = headingPositions[0]
-            let contentAfter = text.count - headingPos
-            if contentAfter > minModuleLength && text.hasSuffix("\n\n") {
-                boundaries.append(text.count)
+        } else if h2Positions.count >= 2 {
+            // 策略2：只有一个/没有一级标题，但有多个二级标题，按二级标题分割
+            headingLevel = "H2"
+            for boundary in h2Positions.dropFirst() where boundary > startPosition {
+                boundaries.append(boundary)
             }
-        } else if text.count > startPosition + minModuleLength * 2 && text.hasSuffix("\n\n")
-            || (isPlainText(text) && text.count > startPosition + minModuleLength && text.hasSuffix("\n")) {
-            // 没有标题，但有足够内容且以双换行结束
-            boundaries.append(text.count)
+
+            if let lastHeadingPos = h2Positions.last {
+                let contentAfterLast = text.count - lastHeadingPos
+                if contentAfterLast > minModuleLength && text.hasSuffix("\n\n") {
+                    boundaries.append(text.count)
+                }
+            }
+        } else {
+            // 策略3：没有足够的标题，按双换行分割段落
+            headingLevel = "paragraph"
+            boundaries = paragraphBoundaries
         }
+
+        print("[StreamBuffer] 📊 Strategy: \(headingLevel), H1=\(h1Positions.count), H2=\(h2Positions.count), startPos=\(startPosition)")
 
         print("[StreamBuffer] 📊 Found \(boundaries.count) boundaries: \(boundaries)")
         return boundaries

@@ -259,6 +259,8 @@ public struct MarkdownConfiguration: Sendable {
     public var listItemSpacing: CGFloat = 4             // 列表项之间的间距
     public var listMarkerMinWidth: CGFloat = 20         // 列表标记最小宽度
     public var listMarkerSpacing: CGFloat = 4           // 列表标记与内容之间的间距
+    public var listTopPadding: CGFloat = 0              // 整个列表顶部内边距
+    public var listBottomPadding: CGFloat = 0           // 整个列表底部内边距
 
     // MARK: - Details 折叠块配置
     public var detailsSummaryFont: UIFont = .systemFont(ofSize: 14, weight: .medium)  // 折叠块标题字体
@@ -337,6 +339,8 @@ public struct MarkdownConfiguration: Sendable {
             listItemSpacing: 4,
             listMarkerMinWidth: 20,
             listMarkerSpacing: 4,
+            listTopPadding: 0,
+            listBottomPadding: 0,
             // Details 折叠块配置
             detailsSummaryFont: .systemFont(ofSize: 14, weight: .medium),
             detailsSummaryTextColor: .systemBlue,       // 折叠块标题文字颜色

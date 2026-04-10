@@ -918,6 +918,7 @@ public final class MarkdownViewTextKit: UIView {
             let indent: CGFloat = configuration.listIndent
             let currentIndent = (oldLevel > 1) ? indent : 0
             let contentMaxWidth = max(0, containerWidth - currentIndent)
+            updateListWrapperLayoutConstraints(view, width: containerWidth, indent: currentIndent)
 
             // 预计算最大标记宽度
             let maxMarkerWidth: CGFloat = {
@@ -2281,6 +2282,36 @@ public final class MarkdownViewTextKit: UIView {
     // 2. 实现 createListView
     // MARK: - List View Creation
 
+    private static let listWrapperTopConstraintIdentifier = "MarkdownListWrapperTop"
+    private static let listWrapperBottomConstraintIdentifier = "MarkdownListWrapperBottom"
+    private static let listWrapperLeadingConstraintIdentifier = "MarkdownListWrapperLeading"
+    private static let listWrapperWidthConstraintIdentifier = "MarkdownListWrapperWidth"
+
+    private func resolvedListTopPadding() -> CGFloat {
+        max(0, configuration.listTopPadding)
+    }
+
+    private func resolvedListBottomPadding() -> CGFloat {
+        max(0, configuration.listBottomPadding)
+    }
+
+    private func updateListWrapperLayoutConstraints(_ wrapper: UIView, width: CGFloat, indent: CGFloat) {
+        for constraint in wrapper.constraints {
+            switch constraint.identifier {
+            case Self.listWrapperTopConstraintIdentifier:
+                constraint.constant = resolvedListTopPadding()
+            case Self.listWrapperBottomConstraintIdentifier:
+                constraint.constant = -resolvedListBottomPadding()
+            case Self.listWrapperLeadingConstraintIdentifier:
+                constraint.constant = indent
+            case Self.listWrapperWidthConstraintIdentifier:
+                constraint.constant = width
+            default:
+                break
+            }
+        }
+    }
+
     private func createListView(items: [ListNodeItem], width: CGFloat, level: Int) -> UIView {
         // 1. 创建主容器（垂直堆叠每个列表项）
         let container = UIStackView()
@@ -2387,19 +2418,29 @@ public final class MarkdownViewTextKit: UIView {
 
         // 关键：只限制“不要超出 wrapper 底部”，不强制 container 贴底。
         // 避免外层把 wrapper 拉高时，内部 list stack 被迫拉伸首项来填充高度。
-        let bottomConstraint = container.bottomAnchor.constraint(lessThanOrEqualTo: indentWrapper.bottomAnchor)
+        let topConstraint = container.topAnchor.constraint(equalTo: indentWrapper.topAnchor, constant: resolvedListTopPadding())
+        topConstraint.identifier = Self.listWrapperTopConstraintIdentifier
+
+        let bottomConstraint = container.bottomAnchor.constraint(lessThanOrEqualTo: indentWrapper.bottomAnchor, constant: -resolvedListBottomPadding())
         bottomConstraint.priority = .required
+        bottomConstraint.identifier = Self.listWrapperBottomConstraintIdentifier
+
+        let leadingConstraint = container.leadingAnchor.constraint(equalTo: indentWrapper.leadingAnchor, constant: currentIndent)
+        leadingConstraint.identifier = Self.listWrapperLeadingConstraintIdentifier
+
+        let widthConstraint = indentWrapper.widthAnchor.constraint(equalToConstant: width)
+        widthConstraint.identifier = Self.listWrapperWidthConstraintIdentifier
 
         // 使用标准约束替代 pinToEdges
         NSLayoutConstraint.activate([
-            container.topAnchor.constraint(equalTo: indentWrapper.topAnchor),
+            topConstraint,
             bottomConstraint,
             container.trailingAnchor.constraint(equalTo: indentWrapper.trailingAnchor),
             // ⭐️ 关键：左边设置缩进
-            container.leadingAnchor.constraint(equalTo: indentWrapper.leadingAnchor, constant: currentIndent),
+            leadingConstraint,
             
             // 宽度约束，确保 wrap content
-            indentWrapper.widthAnchor.constraint(equalToConstant: width)
+            widthConstraint
         ])
         
         return indentWrapper
@@ -3725,6 +3766,18 @@ public final class MarkdownViewTextKit: UIView {
     // 记录上次报告的高度，用于防抖和避免死循环
     private var lastReportedHeight: CGFloat = 0
     
+    private func measuredVisibleContentStackHeight() -> CGFloat {
+        let visibleSubviews = contentStackView.arrangedSubviews.filter { !$0.isHidden }
+        var totalHeight: CGFloat = visibleSubviews.reduce(0) { $0 + $1.frame.height }
+
+        if visibleSubviews.count > 1 {
+            totalHeight += CGFloat(visibleSubviews.count - 1) * contentStackView.spacing
+        }
+
+        totalHeight += contentStackView.layoutMargins.top + contentStackView.layoutMargins.bottom
+        return max(0, totalHeight)
+    }
+
     private func notifyHeightChange(force: Bool = false) {
         let start = CFAbsoluteTimeGetCurrent()
         defer {
@@ -3735,21 +3788,43 @@ public final class MarkdownViewTextKit: UIView {
         if force {
             self.contentStackView.invalidateIntrinsicContentSize()
         }
+        self.layoutIfNeeded()
         self.contentStackView.layoutIfNeeded()
 
-        // Revert optimization: Use systemLayoutSizeFitting to ensure correct height calculation
-        // bounds.height can be unreliable during rapid updates or initial layout
+        // 使用稳定的测量宽度，避免父视图尚未完成布局时出现 width=0 导致测高抖动
+        let fallbackWidth = max(1, UIScreen.main.bounds.width - 32)
+        let fittingWidth: CGFloat = {
+            if self.bounds.width > 0 { return self.bounds.width }
+            if self.contentStackView.bounds.width > 0 { return self.contentStackView.bounds.width }
+            return fallbackWidth
+        }()
+
         let size = self.contentStackView.systemLayoutSizeFitting(
-            CGSize(width: self.bounds.width, height: UIView.layoutFittingCompressedSize.height),
+            CGSize(width: fittingWidth, height: UIView.layoutFittingCompressedSize.height),
             withHorizontalFittingPriority: .required,
             verticalFittingPriority: .fittingSizeLevel
         )
 
-        let newHeight = size.height
+        let frameBasedHeight = measuredVisibleContentStackHeight()
+        let hasVisibleContent = contentStackView.arrangedSubviews.contains { !$0.isHidden }
+
+        var newHeight = size.height
+        var usedFrameFallback = false
+
+        if !newHeight.isFinite || newHeight <= 0 {
+            newHeight = frameBasedHeight
+            usedFrameFallback = true
+        }
+
+        // 有可见内容但高度仍为 0，通常是布局尚未稳定；本轮跳过，等待下一次布局回调
+        if newHeight <= 0, hasVisibleContent, !force {
+            print("📏 [Height] ⏳ Deferred notification (transient 0 with visible content)")
+            return
+        }
 
         // 🔍 诊断日志：打印高度变化
         let heightDiff = newHeight - lastReportedHeight
-        print("🔍 [Height] Current: \(String(format: "%.1f", newHeight))pt | Last: \(String(format: "%.1f", lastReportedHeight))pt | Diff: \(String(format: "%.1f", heightDiff))pt | Force: \(force)")
+        print("🔍 [Height] Current: \(String(format: "%.1f", newHeight))pt | Last: \(String(format: "%.1f", lastReportedHeight))pt | Diff: \(String(format: "%.1f", heightDiff))pt | Force: \(force) | Width: \(String(format: "%.1f", fittingWidth)) | Source: \(usedFrameFallback ? "frame" : "fitting")")
 
         // 只有高度变化超过阈值才通知，避免浮点数误差导致的死循环
         // 如果 force 为 true，忽略防抖检查

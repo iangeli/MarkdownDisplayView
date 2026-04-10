@@ -320,6 +320,8 @@ public var autoFixMalformedTables: Bool    // Auto-fix malformed table text from
 public var listItemSpacing: CGFloat        // List item spacing (default: 4)
 public var listMarkerMinWidth: CGFloat     // List marker minimum width (default: 20)
 public var listMarkerSpacing: CGFloat      // List marker to content spacing (default: 4)
+public var listTopPadding: CGFloat         // Whole-list top padding (default: 0)
+public var listBottomPadding: CGFloat      // Whole-list bottom padding (default: 0)
 ```
 
 #### Details (Collapsible) Configuration
@@ -885,6 +887,12 @@ manager.register(codeBlockRenderer: MermaidRenderer())
 **Solution**: Library is built with Swift 5.9 to avoid strict concurrency checking
 
 ## Changelog
+
+### 1.7.4 (2026-04-10)
+
+- 📏 **Height Measurement Stabilization** - Hardened `notifyHeightChange` with width fallback, frame-height fallback, and transient-zero suppression to avoid `0 ↔ actual height` jumps during initial layout or rapid updates.
+- 🌊 **Paragraph-Level Streaming Fallback** - Real streaming now emits single-heading or heading-less Markdown by paragraph boundaries when heading-based segmentation is unavailable, while skipping fenced code blocks.
+- 📐 **Whole-List Top/Bottom Padding** - Added `listTopPadding` and `listBottomPadding` so the entire list wrapper can apply configurable top/bottom spacing without changing per-item layout.
 
 ### 1.7.2 (2026-04-04)
 
