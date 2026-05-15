@@ -90,7 +90,7 @@ Config.local.json structure:
 Add the dependency in `Package.swift`:
 ```swift
 dependencies: [
-    .package(url: "https://github.com/zjc19891106/MarkdownDisplayView.git", from: "1.7.2")
+    .package(url: "https://github.com/zjc19891106/MarkdownDisplayView.git", from: "1.7.5")
 ]
 ```
 
@@ -887,6 +887,13 @@ manager.register(codeBlockRenderer: MermaidRenderer())
 **Solution**: Library is built with Swift 5.9 to avoid strict concurrency checking
 
 ## Changelog
+
+### 1.7.5 (2026-05-15)
+
+- 🚀 **Prepared Content Rendering** - Added `MarkdownRenderer.prepare(_:)` and `MarkdownViewTextKit.setPreparedContent(_:)` so apps can pre-parse long Markdown off the main display path and reuse the generated render elements.
+- 📏 **Precomputed Height Fast Path** - Prepared content carries estimated element heights, allowing text/heading views to skip expensive first-pass TextKit height calculation when the width is known.
+- 🧪 **History Markdown Example Optimization** - `CocoapodsMDExample` now pre-renders historical long Markdown messages in the background and uses cached row heights to reduce first-scroll stutter.
+- 🐛 **History Row Blank-Space Fix** - Removed the oversized initial row-height placeholder and fixed callback ordering so measured content height replaces estimates correctly.
 
 ### 1.7.4 (2026-04-10)
 

@@ -17,6 +17,38 @@ public protocol MarkdownParserProtocol {
     )
 }
 
+/// Markdown 预渲染结果，可在后台提前生成后交给 `MarkdownViewTextKit` 直接显示。
+public struct MarkdownPreparedContent {
+    public let elements: [MarkdownRenderElement]
+    public let imageAttachments: [(attachment: MarkdownImageAttachment, urlString: String)]
+    public let tableOfContents: [MarkdownTOCItem]
+    public let tocSectionId: String?
+    public let preparedWidth: CGFloat
+    public let estimatedElementHeights: [CGFloat]
+    public let estimatedTotalHeight: CGFloat
+
+    let fixedTextHeights: [CGFloat?]
+
+    init(
+        elements: [MarkdownRenderElement],
+        imageAttachments: [(attachment: MarkdownImageAttachment, urlString: String)],
+        tableOfContents: [MarkdownTOCItem],
+        tocSectionId: String?,
+        preparedWidth: CGFloat,
+        estimatedElementHeights: [CGFloat],
+        fixedTextHeights: [CGFloat?]
+    ) {
+        self.elements = elements
+        self.imageAttachments = imageAttachments
+        self.tableOfContents = tableOfContents
+        self.tocSectionId = tocSectionId
+        self.preparedWidth = preparedWidth
+        self.estimatedElementHeights = estimatedElementHeights
+        self.estimatedTotalHeight = estimatedElementHeights.reduce(0, +)
+        self.fixedTextHeights = fixedTextHeights
+    }
+}
+
 
 /// 外部可见的主渲染器，不直接依赖 swift-markdown
 public final class MarkdownRenderer {
@@ -85,6 +117,101 @@ public final class MarkdownRenderer {
         }
 
         return result
+    }
+
+    /// 预处理 Markdown，生成可复用的渲染元素和按当前宽度估算的高度。
+    public func prepare(_ markdown: String) -> MarkdownPreparedContent {
+        let result = render(markdown)
+        let estimates = result.elements.map { estimateElementHeight($0, containerWidth: containerWidth) }
+
+        return MarkdownPreparedContent(
+            elements: result.elements,
+            imageAttachments: result.imageAttachments,
+            tableOfContents: result.tableOfContents,
+            tocSectionId: result.tocSectionId,
+            preparedWidth: containerWidth,
+            estimatedElementHeights: estimates.map(\.totalHeight),
+            fixedTextHeights: estimates.map(\.fixedTextHeight)
+        )
+    }
+
+    private func estimateElementHeight(
+        _ element: MarkdownRenderElement,
+        containerWidth: CGFloat
+    ) -> (totalHeight: CGFloat, fixedTextHeight: CGFloat?) {
+        switch element {
+        case .attributedText(let text):
+            let size = text.boundingRect(
+                with: CGSize(width: containerWidth, height: .greatestFiniteMagnitude),
+                options: [.usesLineFragmentOrigin, .usesFontLeading],
+                context: nil
+            ).size
+            let textHeight = ceil(size.height)
+            return (
+                textHeight + configuration.paragraphSpacing + configuration.paragraphTopSpacing + configuration.paragraphBottomSpacing,
+                textHeight
+            )
+
+        case .heading(_, let text):
+            let size = text.boundingRect(
+                with: CGSize(width: containerWidth, height: .greatestFiniteMagnitude),
+                options: [.usesLineFragmentOrigin, .usesFontLeading],
+                context: nil
+            ).size
+            let textHeight = ceil(size.height)
+            return (
+                textHeight + configuration.headingTopSpacing + configuration.headingBottomSpacing,
+                textHeight
+            )
+
+        case .quote(let children, _):
+            let childrenHeight = children.reduce(CGFloat(0)) {
+                $0 + estimateElementHeight($1, containerWidth: containerWidth - 40).totalHeight
+            }
+            return (childrenHeight + 24, nil)
+
+        case .codeBlock(_, let code):
+            let lines = code.string.components(separatedBy: .newlines).count
+            return (CGFloat(lines) * 20 + 40, nil)
+
+        case .table(let data):
+            let rowCount = data.rows.count + 1
+            return (CGFloat(rowCount) * 44 + 24, nil)
+
+        case .list(let items, _):
+            var totalHeight: CGFloat = 0
+            for item in items {
+                if item.children.isEmpty {
+                    totalHeight += 28
+                } else {
+                    totalHeight += item.children.reduce(CGFloat(0)) {
+                        $0 + estimateElementHeight($1, containerWidth: containerWidth - 32).totalHeight
+                    }
+                }
+            }
+            return (max(totalHeight, CGFloat(items.count) * 28), nil)
+
+        case .thematicBreak:
+            return (24, nil)
+
+        case .image:
+            return (configuration.imagePlaceholderHeight + 16, nil)
+
+        case .latex:
+            return (80, nil)
+
+        case .details:
+            return (56, nil)
+
+        case .rawHTML:
+            return (100, nil)
+
+        case .custom(let data):
+            if let provider = MarkdownCustomExtensionManager.shared.viewProvider(for: data.type) {
+                return (provider.calculateSize(for: data, configuration: configuration, containerWidth: containerWidth).height, nil)
+            }
+            return (100, nil)
+        }
     }
 
     // MARK: - 预处理：占位符替换策略

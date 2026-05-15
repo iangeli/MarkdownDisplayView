@@ -97,7 +97,7 @@ Config.local.json 结构如下：
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/zjc19891106/MarkdownDisplayView.git", from: "1.7.2")
+    .package(url: "https://github.com/zjc19891106/MarkdownDisplayView.git", from: "1.7.5")
 ]
 ```
 
@@ -903,6 +903,13 @@ manager.register(codeBlockRenderer: MermaidRenderer())
 **解决方案**：库已使用 Swift 5.9 构建，避免严格并发检查
 
 ## 更新日志
+
+### 1.7.5 (2026-05-15)
+
+- 🚀 **预渲染内容渲染入口** - 新增 `MarkdownRenderer.prepare(_:)` 与 `MarkdownViewTextKit.setPreparedContent(_:)`，业务侧可提前解析长 Markdown，并复用生成好的渲染元素。
+- 📏 **预计算高度快速路径** - 预渲染结果携带元素高度估算，在宽度已知时文本/标题视图可跳过首次 TextKit 高度计算。
+- 🧪 **历史长 Markdown 示例优化** - `CocoapodsMDExample` 中的历史消息页面改为后台预渲染长 Markdown，并使用缓存行高，降低首次滑动卡顿。
+- 🐛 **历史消息空白修复** - 移除过大的初始行高占位，并修正高度回调设置顺序，确保真实测量高度能正确替换估算高度。
 
 ### 1.7.4 (2026-04-10)
 

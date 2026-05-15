@@ -53,3 +53,20 @@ import Testing
     #expect(result.completeModules[1] == "Closing paragraph is outside the code block.")
     #expect(result.pendingText.isEmpty)
 }
+
+@available(iOS 15.0, *)
+@Test func rendererPreparesReusableContentWithEstimatedHeight() async throws {
+    let renderer = MarkdownRenderer(configuration: .default, containerWidth: 320)
+    let prepared = renderer.prepare("""
+    # Title
+
+    This is a paragraph with **strong** text.
+
+    - First
+    - Second
+    """)
+
+    #expect(prepared.elements.isEmpty == false)
+    #expect(prepared.estimatedTotalHeight > 0)
+    #expect(prepared.preparedWidth == 320)
+}

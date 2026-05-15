@@ -71,6 +71,33 @@ public final class MarkdownViewTextKit: UIView {
             scheduleRerender()
         }
     }
+
+    /// 直接显示由 `MarkdownRenderer.prepare(_:)` 生成的预渲染内容，跳过 Markdown 字符串解析。
+    @MainActor
+    public func setPreparedContent(_ preparedContent: MarkdownPreparedContent) {
+        resetForReuse()
+
+        renderStartTime = CFAbsoluteTimeGetCurrent()
+        let containerWidth = preparedContent.preparedWidth
+
+        tableOfContents = preparedContent.tableOfContents
+        tocSectionId = preparedContent.tocSectionId
+        imageAttachments = preparedContent.imageAttachments
+        cachedContainerWidth = containerWidth
+        parseCache.cachedElements = preparedContent.elements
+        parseCache.cachedAttachments = preparedContent.imageAttachments
+        parseCache.cachedTOCItems = preparedContent.tableOfContents
+        parseCache.tocSectionId = preparedContent.tocSectionId
+
+        updateViews(
+            newElements: preparedContent.elements,
+            footnotes: [],
+            containerWidth: containerWidth,
+            parseDuration: 0,
+            perfStartTime: renderStartTime,
+            precalculatedTextHeights: preparedContent.fixedTextHeights
+        )
+    }
     
     public var onLinkTap: ((URL) -> Void)?
     public var onImageTap: ((String) -> Void)?
@@ -1565,7 +1592,14 @@ public final class MarkdownViewTextKit: UIView {
         }
     }
     
-    private func updateViews(newElements: [MarkdownRenderElement], footnotes: [MarkdownFootnote], containerWidth: CGFloat, parseDuration: Double = 0, perfStartTime: CFAbsoluteTime = 0) {
+    private func updateViews(
+        newElements: [MarkdownRenderElement],
+        footnotes: [MarkdownFootnote],
+        containerWidth: CGFloat,
+        parseDuration: Double = 0,
+        perfStartTime: CFAbsoluteTime = 0,
+        precalculatedTextHeights: [CGFloat?]? = nil
+    ) {
         let startTime = CFAbsoluteTimeGetCurrent()
         renderCosts = [:] // Reset performance counters
 
@@ -1599,7 +1633,8 @@ public final class MarkdownViewTextKit: UIView {
                     parseDuration: parseDuration,
                     startTime: startTime,
                     isBatchFirstScreen: false,
-                    perfStartTime: perfStartTime
+                    perfStartTime: perfStartTime,
+                    precalculatedTextHeights: precalculatedTextHeights
                 )
                 return
             }
@@ -1622,7 +1657,8 @@ public final class MarkdownViewTextKit: UIView {
                 parseDuration: parseDuration,
                 startTime: startTime,
                 isBatchFirstScreen: true,
-                perfStartTime: perfStartTime
+                perfStartTime: perfStartTime,
+                precalculatedTextHeights: precalculatedTextHeights.map { Array($0.prefix(firstScreenCutoff)) }
             )
 
             // ⭐️ 关键修复：测量首屏实际高度，计算估算误差
@@ -1673,6 +1709,9 @@ public final class MarkdownViewTextKit: UIView {
             // ⭐️ 捕获离屏元素，用于后续追加渲染
             let offscreenElementsCaptured = offscreenElements
             let firstScreenCountCaptured = firstScreenCutoff
+            let offscreenPrecalculatedTextHeights = precalculatedTextHeights.map {
+                Array($0.dropFirst(firstScreenCutoff))
+            }
 
             let workItem = DispatchWorkItem { [weak self] in
                 guard let self = self else { return }
@@ -1699,7 +1738,11 @@ public final class MarkdownViewTextKit: UIView {
                 // 这样首屏视图保持不变，避免布局跳动
                 for (index, element) in offscreenElementsCaptured.enumerated() {
                     let createStart = CFAbsoluteTimeGetCurrent()
-                    let view = self.createView(for: element, containerWidth: containerWidth)
+                    let view = self.createView(
+                        for: element,
+                        containerWidth: containerWidth,
+                        precalculatedHeight: offscreenPrecalculatedTextHeights?[safe: index] ?? nil
+                    )
 
                     // 设置 tag 便于调试
                     view.tag = 1000 + firstScreenCountCaptured + index
@@ -1771,7 +1814,8 @@ public final class MarkdownViewTextKit: UIView {
             parseDuration: parseDuration,
             startTime: startTime,
             isBatchFirstScreen: false,
-            perfStartTime: perfStartTime
+            perfStartTime: perfStartTime,
+            precalculatedTextHeights: precalculatedTextHeights
         )
     }
 
@@ -1880,7 +1924,8 @@ public final class MarkdownViewTextKit: UIView {
         parseDuration: Double,
         startTime: Double,
         isBatchFirstScreen: Bool,
-        perfStartTime: CFAbsoluteTime
+        perfStartTime: CFAbsoluteTime,
+        precalculatedTextHeights: [CGFloat?]? = nil
     ) {
         var newSubviews: [UIView] = []
         var consumedOldIndices = Set<Int>()
@@ -1958,7 +2003,11 @@ public final class MarkdownViewTextKit: UIView {
                 
                 // ⏱ Measure Creation Time
                 let createStart = CFAbsoluteTimeGetCurrent()
-                let newView = createView(for: newElement, containerWidth: containerWidth)
+                let newView = createView(
+                    for: newElement,
+                    containerWidth: containerWidth,
+                    precalculatedHeight: precalculatedTextHeights?[safe: newIndex] ?? nil
+                )
                 recordCost(for: "Create \(elementTypeString(newElement))", duration: CFAbsoluteTimeGetCurrent() - createStart)
                 
                 newSubviews.append(newView)
