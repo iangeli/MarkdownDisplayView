@@ -26,7 +26,7 @@ let package = Package(
             dependencies: [
                 .product(name: "Markdown", package: "swift-markdown")
             ],
-            path: "MarkdownDisplayView/Sources/MarkdownDisplayView",
+            path: "MarkdownDisplayView/Sources",
             resources: [
                 // KaTeX 字体文件
                 .process("Resources")

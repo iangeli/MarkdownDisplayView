@@ -1,5 +1,3 @@
-*English | [中文](README_zh.md)*
-
 # MarkdownDisplayView
 
 A powerful iOS Markdown rendering component built on TextKit 2, providing smooth rendering performance and rich customization options. It also enables the streaming rendering of Markdown format in AI question-and-answer scenarios.
@@ -93,21 +91,6 @@ dependencies: [
     .package(url: "https://github.com/zjc19891106/MarkdownDisplayView.git", from: "1.7.5")
 ]
 ```
-
-### CocoaPods
-Add the following lines to your `Podfile`:
-
-```ruby
-pod 'MarkdownDisplayKit'
-```
-
-Then run:
-
-```bash
-pod install
-```
-
-**Note**: MarkdownDisplayKit depends on `swift-markdown` for Markdown parsing. Since `swift-markdown` is not yet available on CocoaPods trunk, you need to add it from the GitHub source as shown above.
 
 ## Quick Start
 
@@ -886,139 +869,6 @@ manager.register(codeBlockRenderer: MermaidRenderer())
 
 **Solution**: Library is built with Swift 5.9 to avoid strict concurrency checking
 
-## Changelog
-
-### 1.7.5 (2026-05-15)
-
-- 🚀 **Prepared Content Rendering** - Added `MarkdownRenderer.prepare(_:)` and `MarkdownViewTextKit.setPreparedContent(_:)` so apps can pre-parse long Markdown off the main display path and reuse the generated render elements.
-- 📏 **Precomputed Height Fast Path** - Prepared content carries estimated element heights, allowing text/heading views to skip expensive first-pass TextKit height calculation when the width is known.
-- 🧪 **History Markdown Example Optimization** - `CocoapodsMDExample` now pre-renders historical long Markdown messages in the background and uses cached row heights to reduce first-scroll stutter.
-- 🐛 **History Row Blank-Space Fix** - Removed the oversized initial row-height placeholder and fixed callback ordering so measured content height replaces estimates correctly.
-
-### 1.7.4 (2026-04-10)
-
-- 📏 **Height Measurement Stabilization** - Hardened `notifyHeightChange` with width fallback, frame-height fallback, and transient-zero suppression to avoid `0 ↔ actual height` jumps during initial layout or rapid updates.
-- 🌊 **Paragraph-Level Streaming Fallback** - Real streaming now emits single-heading or heading-less Markdown by paragraph boundaries when heading-based segmentation is unavailable, while skipping fenced code blocks.
-- 📐 **Whole-List Top/Bottom Padding** - Added `listTopPadding` and `listBottomPadding` so the entire list wrapper can apply configurable top/bottom spacing without changing per-item layout.
-
-### 1.7.2 (2026-04-04)
-
-- ➕ **`isPlainText()` Detection** - Added `isPlainText()` in `MarkdownStreamBuffer` to identify non-Markdown content.
-- ⚡ **Faster Plain-Text Output** - For plain text without Markdown markers, modules can now be submitted at `\n` boundaries instead of requiring `\n\n`, enabling faster typewriter output.
-- ✅ **Markdown Flow Unchanged** - Markdown content behavior is unchanged and still waits for `\n\n` paragraph boundaries.
-
-### 1.7.1 (2026-04-03)
-
-- 🐛 **Ordered List Height Consistency Fix** - Fixed an issue where the first ordered-list item could be stretched taller than following items in some stack/reuse layouts.
-- 🧱 **List Layout Constraint Hardening** - Adjusted list wrapper constraints (`bottom <=`) and strengthened vertical hugging/compression priorities to prevent extra height from being absorbed by the first item.
-- 🧹 **List Content Normalization** - Added normalization/cleanup for invisible list text nodes (leading/trailing newlines, zero-width/control whitespace) to avoid phantom height.
-
-### 1.7.0 (2026-04-03)
-
-- 📊 **Markdown Table Column Alignment** - Added support for table alignment syntax (`:---`, `:---:`, `---:`) and applied alignment per column.
-- 🛠 **Malformed Table Auto-Fix** - Added `autoFixMalformedTables` (default: `true`) to normalize common broken table output (isolated `|`, accidental blank lines inside table blocks).
-- ✍️ **Configurable Line Spacing** - Added `lineSpacing` configuration for `body`, `heading`, `quote`, `codeBlock`, replacing fixed line spacing constants.
-- 🔗 **Table Link Tap Callback** - Table cells keep using `UILabel` for better scrolling performance; link tap now routes through table cell selection and triggers existing `onLinkTap`.
-- 🐛 **Touch Routing Fix** - Fixed gesture conflict where outer TextKit tap handling could swallow table attachment touches.
-- ⚠️ **Configuration Cleanup** - Removed table-level alignment override config; table text alignment now follows Markdown table syntax (fallback: left).
-
-### 1.6.9 (2026-03-17)
-
-- 🔗 **Link Underline Control** - Added `linkUnderlineEnabled` configuration option to control whether links display underlines
-  - New property `linkUnderlineEnabled: Bool` in `MarkdownConfiguration` (default: `true`)
-  - Affects all link types: inline Markdown links (`[text](url)`) and TOC navigation links
-  - **Root cause fix**: Implemented `NSTextLayoutManagerDelegate.renderingAttributesForLink(_:at:defaultAttributes:)` to properly intercept TextKit 2's built-in link rendering pipeline, which previously ignored `NSAttributedString` underline attributes entirely
-
-### 1.6.8 (2026-02-06)
-
-- 📜 **Code Block Horizontal Scrolling** - Code blocks now support horizontal scrolling to view complete long code lines
-  - Implemented using `NSTextAttachmentViewProvider` pattern, consistent with LaTeX formula and table rendering architecture
-  - New `CodeBlockAttachment` and `CodeBlockAttachmentViewProvider` classes for code block rendering
-  - Code text no longer wraps; users can scroll horizontally to view full code content
-  - Maintains original syntax highlighting, background color, and corner radius styling
-
-### 1.6.2 (2026-02-05)
-
-- 📳 **Haptic Feedback Timing Optimization** - Haptic feedback now syncs precisely with TypewriterEngine output rhythm
-  - Text haptics: Only triggers when `revealCharacter` actually displays new characters
-  - Block haptics: Triggers when block element animation completes (image, LaTeX, etc.)
-  - Removed unnecessary haptics for container views (`.show`) and small elements (`.label`)
-  - Haptic feedback no longer triggers on data arrival, but on actual content display
-
-### 1.6.1 (2026-02-02)
-
-- 📳 **Streaming Haptic Feedback** - Added haptic feedback support during streaming output for enhanced user experience
-  - New `StreamingHapticFeedbackStyle` enum with options: `.none`, `.light`, `.medium`, `.heavy`, `.soft`, `.rigid`
-  - New configuration options: `streamingHapticFeedbackStyle` (feedback intensity) and `streamingHapticMinInterval` (minimum interval)
-  - Supports both real streaming (`appendStreamData`, `appendBlock`) and fake streaming (`startStreaming`) modes
-
-### 1.6.0 (2026-01-30)
-
-- 🎨 **Comprehensive Configuration Options** - Added extensive customization for all Markdown elements:
-  - **LaTeX Formula**: `latexFontSize`, `latexAlignment` (left/center/right), `latexBackgroundColor`, `latexPadding`
-  - **Blockquote**: `blockquoteBackgroundColor`, `blockquoteBarWidth`, `blockquoteContentSpacing`, `blockquoteContentPadding`
-  - **Table**: `tableMinColumnWidth`, `tableMaxColumnWidth`, `tableRowHeight`, `tableCellPadding`, `tableSeparatorHeight`
-  - **List**: `listItemSpacing`, `listMarkerMinWidth`, `listMarkerSpacing`
-  - **Details**: `detailsSummaryFont`, `detailsSummaryTextColor`, `detailsSummaryMinHeight`, `detailsContentPadding`, `detailsSpacing`
-  - **Syntax Highlighting**: `syntaxColors`, `syntaxColorsDark` with `SyntaxHighlightColors` struct (keyword, string, number, comment, type, function, property, preprocessor)
-  - **TOC**: `tocTextColor`
-- 🐛 **Bug Fix** - `tableRowBackgroundColor` now properly applied to table rows
-- 📝 **Documentation** - Updated README with complete configuration options
-
-### 1.5.9 (2026-01-26)
-
-- 🚀 **Typewriter Append** - Add `.append` mode with throttled height updates to reduce layout jumps during cell streaming
-- ⚙️ **Streaming Config** - Expose `typewriterTextMode`, `typewriterHeightUpdateInterval`, `streamMinModuleLength`
-- 🧹 **Memory Cleanup** - Add cache clearing helpers and Mermaid WebView cleanup to reduce retained memory
-- 🧪 **Example Update** - AI chat stream uses safer LaTeX normalization (code regions ignored) and recommended config
-
-### 1.5.8 (2026-01-23)
-
-- 📝 **Docs Update** - Refresh README content
-- 🐛 **SPM Fix** - Fix simulator build error in Swift Package Manager example project
-
-### 1.5.2 (2026-01-08)
-
-- 🐛 **Crash Fix** - Serialize `swift-markdown` parsing to avoid `cmark_parser_attach_syntax_extension` race crash in concurrent renders
-- 🧹 **Reuse Safety** - Add `resetForReuse()` to clear internal caches/state for `UITableViewCell` reuse scenarios
-- 🧪 **Example Update** - Add crash reproduction screen and incremental row insert demo for table view usage
-
-### 1.5.1 (2026-01-07)
-
-- 🐛 **Bug Fix** - Fixed potential crash when processing Unicode characters (emoji, CJK characters) in streaming mode
-  - `MarkdownStreamBuffer.extractModule`: Use safe string index with `limitedBy` to prevent out-of-bounds crash
-  - `TypewriterEngine.calculateDelay`: Use safe string index to prevent crash when calculating delay for special characters
-
-### 1.5.0 (2026-01-04)
-
-- 🚀 **Real Streaming Support** - New `MarkdownStreamBuffer` for intelligent real-time streaming from network/LLM APIs
-  - Smart module detection: automatically detects complete Markdown blocks (headings, code blocks, tables, LaTeX)
-  - Handles incomplete structures: waits for closing tags before rendering (e.g., unclosed ``` or $$)
-  - Incremental rendering: renders complete modules immediately while buffering incomplete content
-- 💫 **Smart Waiting Indicator** - In real streaming mode, automatically shows waiting animation when TypewriterEngine queue is empty and no network data arrives
-- 🏗️ **Code Refactoring** - Extracted `MarkdownTextViewTK2`, `MarkdownStreamBuffer`, and `TypewriterEngine` into separate files for better maintainability
-- 🐛 **Streaming Fixes** - Multiple fixes for real streaming mode stability and rendering issues
-
-### 1.4.1 (2026-01-02)
-
-- 🐛 **Bug Fix** - Fixed code blocks not rendering properly in real streaming mode when content arrives in multiple chunks
-
-### 1.4.0 (2025-12-31)
-
-- 🚀 **Instant Loading** - Significantly optimized loading speed with ultra-fast first screen rendering
-- ⚡ **CPU Optimization** - Streaming mode with nested style rendering now uses much less CPU (iPhone 17 Pro simulator peak < 56%, average 30%)
-- 🔌 **Enhanced Custom Extensions** - New `MarkdownCodeBlockRenderer` protocol for custom code block rendering (e.g., Mermaid diagrams)
-- 🎨 **Mermaid Support** - Example project now includes Mermaid diagram renderer supporting flowcharts, mind maps, and more
-
-### 1.0.0 (2025-12-15)
-
-- 🎉 Initial release
-- ✅ Full Markdown syntax support
-- ✅ 20+ language code highlighting
-- ✅ Automatic table of contents generation
-- ✅ Dark mode support
-- ✅ High-performance asynchronous rendering
-
 ## Contributing
 
 Issues and Pull Requests are welcome!
@@ -1033,20 +883,6 @@ Before submitting a PR, please ensure:
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Author
-
-MarkdownDisplayView is created and maintained by [@zjc19891106](https://github.com/zjc19891106).
-If this library saved you time, consider supporting me. Thanks to everyone who has supported me so far.
-
-- Support the author
-- WeChat
-  ![](Support/wechat.jpg)
-- AliPay
-  ![](Support/alipay.jpg)
-- Paypal
-
-  ![](Support/paypal.png)
-
 ## Acknowledgments
 
 - [swift-markdown](https://github.com/swiftlang/swift-markdown) - Markdown parsing library
@@ -1056,25 +892,3 @@ If this library saved you time, consider supporting me. Thanks to everyone who h
 - All contributors and users
 - All friends who provided suggestions and feedback
 
-## Contact
-
-If you have questions or suggestions, please contact via:
-
-- Submit [GitHub Issue](https://github.com/zjc19891106/MarkdownDisplayView/issues)
-- Send email to: 984065974@qq.com or luomobancheng@gmail.com
-
-- QQ Group
-![QQ Group](./Communication/qq.jpeg)
-
-- WeChat Group
-![WeChat Group](./Communication/wechat.jpeg)
-
-- Telegram
-![Telegram](./Communication/telegram.jpeg)
-
-- Discord
-![Discord](./Communication/discord.jpeg)
-
----
-
-**If you find this project helpful, please give it a Star ⭐️ for support!
