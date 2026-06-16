@@ -11,48 +11,48 @@ import UIKit
 
 @available(iOS 15.0, *)
 public final class ScrollableMarkdownViewTextKit: UIScrollView {
-    
+
     public let markdownView = MarkdownViewTextKit()
-    
+
     public var markdown: String {
         get { markdownView.markdown }
         set { markdownView.markdown = newValue }
     }
-    
+
     public var configuration: MarkdownConfiguration {
         get { markdownView.configuration }
         set { markdownView.configuration = newValue }
     }
-    
+
     public var onLinkTap: ((URL) -> Void)? {
         get { markdownView.onLinkTap }
         set { markdownView.onLinkTap = newValue }
     }
-    
+
     public var onImageTap: ((String) -> Void)? {
         get { markdownView.onImageTap }
         set { markdownView.onImageTap = newValue }
     }
-    
+
     public var onTOCItemTap: ((MarkdownTOCItem) -> Void)? {
         get { markdownView.onTOCItemTap }
         set { markdownView.onTOCItemTap = newValue }
     }
-    
+
     public var tableOfContents: [MarkdownTOCItem] {
         return markdownView.tableOfContents
     }
-    
+
     public override init(frame: CGRect) {
         super.init(frame: frame)
         setupUI()
     }
-    
+
     public required init?(coder: NSCoder) {
         super.init(coder: coder)
         setupUI()
     }
-    
+
     private func setupUI() {
         addSubview(markdownView)
         markdownView.translatesAutoresizingMaskIntoConstraints = false
@@ -64,18 +64,18 @@ public final class ScrollableMarkdownViewTextKit: UIScrollView {
             markdownView.leadingAnchor.constraint(equalTo: contentLayoutGuide.leadingAnchor, constant: 16),
             markdownView.trailingAnchor.constraint(equalTo: contentLayoutGuide.trailingAnchor, constant: -16),
             markdownView.bottomAnchor.constraint(equalTo: contentLayoutGuide.bottomAnchor, constant: -16),
-            markdownView.widthAnchor.constraint(equalTo: frameLayoutGuide.widthAnchor, constant: -32),
+            markdownView.widthAnchor.constraint(equalTo: frameLayoutGuide.widthAnchor, constant: -32)
         ])
     }
-    
+
     public func scrollToTOCItem(_ item: MarkdownTOCItem) {
         markdownView.scrollToTOCItem(item)
     }
-    
+
     public func generateTOCView() -> UIView {
         return markdownView.generateTOCView()
     }
-    
+
     /// 滚动到底部
     public func scrollToBottom(animated: Bool = true) {
         let bottomOffset = CGPoint(
@@ -92,19 +92,19 @@ public final class ScrollableMarkdownViewTextKit: UIScrollView {
 
     /// 流式渲染时是否自动滚动
     public var autoScrollOnStreaming: Bool = true
-    
+
     /// 跳转到文档内的目录区域
     public func backToTableOfContentsSection() {
         markdownView.backToTableOfContentsSection()
     }
-    
+
     /// 是否存在目录区域
     public var hasTableOfContentsSection: Bool {
         return markdownView.hasTableOfContentsSection
     }
 }
 
-//MARK: - streaming extension
+// MARK: - streaming extension
 extension ScrollableMarkdownViewTextKit {
     // 在 ScrollableMarkdownViewTextKt 中添加
     public func startStreaming(_ text: String, unit: StreamingUnit = .word, unitsPerChunk: Int = 2, interval: TimeInterval = 0.05, autoScrollBottom: Bool = true) {

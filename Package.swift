@@ -11,11 +11,11 @@ let package = Package(
         .library(
             name: "MarkdownDisplayView",
             targets: ["MarkdownDisplayView"]
-        ),
+        )
 
     ],
     dependencies: [
-        .package(url: "https://github.com/swiftlang/swift-markdown.git", from: "0.7.3"),
+        .package(url: "https://github.com/swiftlang/swift-markdown.git", from: "0.7.3")
 
     ],
     targets: [
@@ -45,6 +45,6 @@ let package = Package(
             name: "MarkdownDisplayViewTests",
             dependencies: ["MarkdownDisplayView"],
             path: "MarkdownDisplayView/Tests/MarkdownDisplayViewTests"
-        ),
+        )
     ]
 )

@@ -184,5 +184,4 @@ public final class LaTeXAttachmentViewProvider: NSTextAttachmentViewProvider {
         print("[STREAM] 📐📐📐 loadView() 完成，总耗时: \(String(format: "%.1f", (CFAbsoluteTimeGetCurrent() - loadStart) * 1000))ms")
     }
 
-    
 }

@@ -17,7 +17,7 @@ class StreamingMarkdownController: UIViewController {
         setupUI()
         loadSampleMarkdown()
     }
-    
+
     private func setupUI() {
         self.view.backgroundColor = .white
         let titleLabel = UILabel()
@@ -51,7 +51,7 @@ class StreamingMarkdownController: UIViewController {
                 equalTo: closeButton.bottomAnchor, constant: 8),
             scrollableMarkdownView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollableMarkdownView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            scrollableMarkdownView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            scrollableMarkdownView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
 
         // 设置链接点击回调
@@ -59,7 +59,7 @@ class StreamingMarkdownController: UIViewController {
             self?.handleLinkTap(url)
         }
     }
-    
+
     private func handleLinkTap(_ url: URL) {
         // 处理链接点击
         if UIApplication.shared.canOpenURL(url) {
@@ -70,9 +70,7 @@ class StreamingMarkdownController: UIViewController {
     @objc private func dismissSelf() {
         dismiss(animated: true, completion: nil)
     }
-    
-    
-    
+
     private func loadSampleMarkdown() {
         // 流式渲染（打字机效果）
         scrollableMarkdownView.startStreaming(

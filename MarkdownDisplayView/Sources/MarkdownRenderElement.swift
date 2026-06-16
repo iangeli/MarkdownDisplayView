@@ -28,7 +28,7 @@ public struct MarkdownTableData: Equatable {
 public struct ListNodeItem: Equatable {
     let marker: String // 例如 "1." 或 "•"
     let children: [MarkdownRenderElement] // 递归包含其他元素
-    
+
     public static func == (lhs: ListNodeItem, rhs: ListNodeItem) -> Bool {
         return lhs.marker == rhs.marker && lhs.children == rhs.children
     }
@@ -190,7 +190,7 @@ public struct MarkdownLineSpacingConfiguration: Sendable {
 
 // MARK: - MarkdownConfiguration
 public struct MarkdownConfiguration: Sendable {
-    
+
     public var bodyFont: UIFont
     public var h1Font: UIFont
     public var h2Font: UIFont
@@ -200,7 +200,7 @@ public struct MarkdownConfiguration: Sendable {
     public var h6Font: UIFont
     public var codeFont: UIFont
     public var blockquoteFont: UIFont
-    
+
     public var textColor: UIColor
     public var headingColor: UIColor
     public var linkColor: UIColor
@@ -228,8 +228,7 @@ public struct MarkdownConfiguration: Sendable {
     public var streamMinModuleLength: Int = 50
     public var typewriterTextMode: MarkdownTypewriterTextMode = .reveal
     public var typewriterHeightUpdateInterval: Int = 20
-    
-    
+
     public var headingTopSpacing: CGFloat       // 标题上方间距（标题与前一个内容之间的距离）
     public var headingBottomSpacing: CGFloat    // 标题下方间距（标题与后一个内容之间的距离）
     public var paragraphTopSpacing: CGFloat     // 普通段落上方间距
@@ -280,7 +279,7 @@ public struct MarkdownConfiguration: Sendable {
     public var streamingHapticMinInterval: TimeInterval = 0.05
     /// 行间距配置（用于替换渲染层固定的 lineSpacing 常量）
     public var lineSpacing: MarkdownLineSpacingConfiguration = .default
-    
+
     public static var `default`: MarkdownConfiguration {
         MarkdownConfiguration(
             bodyFont: .systemFont(ofSize: 16),
@@ -368,8 +367,6 @@ public struct MarkdownConfiguration: Sendable {
         return config
     }
 }
-
-
 
 public enum StreamingUnit {
     case character  // 字符

@@ -63,7 +63,7 @@ final class MarkdownParser: MarkdownParserProtocol {
 
     private var isInTable = false
 
-    private var detectedTOCSectionId: String? = nil
+    private var detectedTOCSectionId: String?
 
     init(configuration: MarkdownConfiguration, containerWidth: CGFloat) {
         self.configuration = configuration
@@ -199,7 +199,7 @@ final class MarkdownParser: MarkdownParserProtocol {
         if let lastLine = lines.last?.trimmingCharacters(in: .whitespaces) {
             // 列表项
             if lastLine.hasPrefix("- ") || lastLine.hasPrefix("* ") ||
-               lastLine.hasPrefix("+ ") || lastLine.first?.isNumber == true {
+                lastLine.hasPrefix("+ ") || lastLine.first?.isNumber == true {
                 if !text.hasSuffix("\n") {
                     return .list
                 }
@@ -300,7 +300,7 @@ final class MarkdownParser: MarkdownParserProtocol {
     private func findTableStart(in text: String) -> Int? {
         let lines = text.components(separatedBy: .newlines)
         var currentPosition = 0
-        var tableStartPosition: Int? = nil
+        var tableStartPosition: Int?
 
         for (index, line) in lines.enumerated() {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
@@ -352,22 +352,22 @@ final class MarkdownParser: MarkdownParserProtocol {
         }
         return 0
     }
-    
+
     func parseAndRender(_ markdown: String) -> (
         elements: [MarkdownRenderElement],
         imageAttachments: [(attachment: MarkdownImageAttachment, urlString: String)],
         tableOfContents: [MarkdownTOCItem],
         tocSectionId: String?
     ) {
-        
+
         let document = parseDocument(markdown)
-        
+
         // 提取 TOC 和自动目录区域 ID
         let (tocItems, tocId) = extractHeadings(from: document)
-        
+
         // 渲染元素
         let (elements, attachments) = render(document)
-        
+
         return (elements, attachments, tocItems, tocId)
     }
 
@@ -376,7 +376,7 @@ final class MarkdownParser: MarkdownParserProtocol {
         defer { Self.parseLock.unlock() }
         return Document(parsing: markdown)
     }
-    
+
     private func render(_ document: Document) -> (
         elements: [MarkdownRenderElement],
         imageAttachments: [(attachment: MarkdownImageAttachment, urlString: String)]
@@ -384,56 +384,56 @@ final class MarkdownParser: MarkdownParserProtocol {
         imageAttachments = []
         elements = []
         currentTextBuffer = NSMutableAttributedString()
-        
+
         for child in document.children {
             renderBlock(child)
         }
-        
+
         flushTextBuffer()
-        
+
         let groupedElements = groupDetailsElements(elements)
-        
+
         return (groupedElements, imageAttachments)
     }
-    
+
     // 下面是原来 MarkdownRenderer 中所有私有方法的完整实现
     // （直接复制你提供的原始代码中从 cachedRegex 开始到最后的所有内容）
-    
+
     private func cachedRegex(_ pattern: String, options: NSRegularExpression.Options = []) -> NSRegularExpression? {
         let key = "\(pattern)-\(options.rawValue)"
-        
+
         Self.regexLock.lock()
         defer { Self.regexLock.unlock() }
-        
+
         if let cached = Self.regexCache[key] {
             return cached
         }
-        
+
         guard let regex = try? NSRegularExpression(pattern: pattern, options: options) else {
             return nil
         }
-        
+
         Self.regexCache[key] = regex
         return regex
     }
-    
+
     private func groupDetailsElements(_ elements: [MarkdownRenderElement]) -> [MarkdownRenderElement] {
         var result: [MarkdownRenderElement] = []
         var stack: [(summary: String, children: [MarkdownRenderElement])] = []
-        
+
         let openPattern = "<details>\\s*<summary>(.*?)</summary>"
         let closePattern = "</details>"
-        
+
         let openRegex = try? NSRegularExpression(pattern: openPattern, options: [.dotMatchesLineSeparators, .caseInsensitive])
         let closeRegex = try? NSRegularExpression(pattern: closePattern, options: [.caseInsensitive])
-        
+
         for element in elements {
             var processed = false
-            
+
             if case .rawHTML(let html) = element {
                 let nsString = html as NSString
                 let range = NSRange(location: 0, length: nsString.length)
-                
+
                 if let regex = openRegex,
                    let match = regex.firstMatch(in: html, options: [], range: range) {
                     let summaryRange = match.range(at: 1)
@@ -453,7 +453,7 @@ final class MarkdownParser: MarkdownParserProtocol {
                     processed = true
                 }
             }
-            
+
             if !processed {
                 if stack.isEmpty {
                     result.append(element)
@@ -462,30 +462,30 @@ final class MarkdownParser: MarkdownParserProtocol {
                 }
             }
         }
-        
+
         for item in stack {
             result.append(.rawHTML("<details><summary>\(item.summary)</summary>"))
             result.append(contentsOf: item.children)
         }
-        
+
         return result
     }
-    
+
     // MARK: - Block Level
-    
+
     private func renderBlock(_ markup: any Markup) {
         switch markup {
         case let table as Table:
             flushTextBuffer()
             elements.append(.table(renderTableData(table)))
             currentTextBuffer.append(NSAttributedString(string: "\n"))
-            
+
         case let heading as Heading:
             flushTextBuffer()
             let id = "heading-\(headingIndex)"
             headingIndex += 1
             elements.append(.heading(id: id, text: renderHeading(heading)))
-            
+
         case let paragraph as Paragraph:
             // 检测段落中是否包含 LaTeX 公式
             let paragraphText = paragraph.plainText
@@ -494,7 +494,7 @@ final class MarkdownParser: MarkdownParserProtocol {
             } else {
                 currentTextBuffer.append(renderParagraph(paragraph))
             }
-            
+
         case let codeBlock as CodeBlock:
             flushTextBuffer()
 
@@ -508,12 +508,12 @@ final class MarkdownParser: MarkdownParserProtocol {
                 let latex = String(rawCode[startIndex..<endIndex])
                 elements.append(.latex(latex))
             } else if lang == "math" || lang == "latex" {
-                 elements.append(.latex(codeBlock.code))
+                elements.append(.latex(codeBlock.code))
             } else {
                 // 传递语言信息以支持自定义代码块渲染器
                 elements.append(.codeBlock(language: lang, code: renderCodeBlock(codeBlock)))
             }
-            
+
         case let blockQuote as BlockQuote:
             flushTextBuffer()
             // 使用 captureElements 捕获引用块内部的所有子元素
@@ -526,7 +526,7 @@ final class MarkdownParser: MarkdownParserProtocol {
             let currentLevel = quoteDepth
             quoteDepth -= 1
             elements.append(.quote(children: children, level: currentLevel))
-            
+
         case let unorderedList as UnorderedList:
             flushTextBuffer()
             listDepth += 1
@@ -544,11 +544,11 @@ final class MarkdownParser: MarkdownParserProtocol {
             orderedListCounters.removeLast()
             listDepth -= 1
             elements.append(.list(items: items, level: currentLevel))
-            
+
         case _ as ThematicBreak:
             flushTextBuffer()
             elements.append(.thematicBreak)
-            
+
         case let htmlBlock as HTMLBlock:
             currentTextBuffer.append(renderHTMLBlock(htmlBlock))
         case let image as Markdown.Image:
@@ -562,7 +562,7 @@ final class MarkdownParser: MarkdownParserProtocol {
             }
         }
     }
-    
+
     private func flushTextBuffer() {
         if currentTextBuffer.length > 0 {
             elements.append(.attributedText(currentTextBuffer))
@@ -599,7 +599,7 @@ final class MarkdownParser: MarkdownParserProtocol {
     }
 
     // MARK: - Table Data
-    
+
     private func renderTableData(_ table: Table) -> MarkdownTableData {
         var headers: [NSAttributedString] = []
         var rows: [[NSAttributedString]] = []
@@ -614,15 +614,15 @@ final class MarkdownParser: MarkdownParserProtocol {
                 return .right
             }
         }
-        
+
         isInTable = true  // 添加这行
-        
+
         isTableHeader = true
         for cell in table.head.cells {
             headers.append(renderTableCellContent(cell))
         }
         isTableHeader = false
-        
+
         for row in table.body.rows {
             var rowCells: [NSAttributedString] = []
             for cell in row.cells {
@@ -630,31 +630,31 @@ final class MarkdownParser: MarkdownParserProtocol {
             }
             rows.append(rowCells)
         }
-        
+
         isInTable = false  // 添加这行
-        
+
         return MarkdownTableData(headers: headers, rows: rows, columnAlignments: columnAlignments)
     }
-    
+
     private func renderTableCellContent(_ cell: Table.Cell) -> NSAttributedString {
         let result = NSMutableAttributedString()
         for child in cell.children {
             result.append(renderMarkup(child))
         }
-        
+
         let font = isTableHeader
-            ? UIFont.systemFont(ofSize: configuration.bodyFont.pointSize, weight: .semibold)
-            : configuration.bodyFont
-        
+        ? UIFont.systemFont(ofSize: configuration.bodyFont.pointSize, weight: .semibold)
+        : configuration.bodyFont
+
         if result.length > 0 {
             result.addAttribute(.font, value: font, range: NSRange(location: 0, length: result.length))
         }
-        
+
         return result
     }
-    
+
     // MARK: - Inline Rendering
-    
+
     private func renderMarkup(_ markup: any Markup) -> NSMutableAttributedString {
         switch markup {
         case let text as Text:
@@ -677,10 +677,10 @@ final class MarkdownParser: MarkdownParserProtocol {
                     string: text,
                     attributes: [
                         .font: configuration.bodyFont,
-                        .foregroundColor: configuration.textColor,
+                        .foregroundColor: configuration.textColor
                     ])
             }
-            
+
             flushTextBuffer()
             if let source = image.source, !source.isEmpty {
                 elements.append(.image(source: source, altText: image.plainText))
@@ -705,7 +705,7 @@ final class MarkdownParser: MarkdownParserProtocol {
             return renderChildren(of: markup)
         }
     }
-    
+
     private func renderChildren(of markup: any Markup) -> NSMutableAttributedString {
         let result = NSMutableAttributedString()
         for child in markup.children {
@@ -713,12 +713,12 @@ final class MarkdownParser: MarkdownParserProtocol {
         }
         return result
     }
-    
+
     // MARK: - Headings
-    
+
     private func renderHeading(_ heading: Heading) -> NSMutableAttributedString {
         let result = NSMutableAttributedString()
-        
+
         let font: UIFont
         switch heading.level {
         case 1: font = configuration.h1Font
@@ -728,60 +728,60 @@ final class MarkdownParser: MarkdownParserProtocol {
         case 5: font = configuration.h5Font
         default: font = configuration.h6Font
         }
-        
+
         for child in heading.children {
             result.append(renderMarkup(child))
         }
-        
+
         let paragraphStyle = NSMutableParagraphStyle()
         paragraphStyle.paragraphSpacing = 3
         paragraphStyle.lineHeightMultiple = 1.2
         paragraphStyle.lineSpacing = configuration.lineSpacing.heading
-        
+
         let range = NSRange(location: 0, length: result.length)
         result.addAttributes([
             .font: font,
             .foregroundColor: configuration.headingColor,
-            .paragraphStyle: paragraphStyle,
+            .paragraphStyle: paragraphStyle
         ], range: range)
-        
+
         return result
     }
-    
+
     // MARK: - Paragraph
-    
+
     private func renderParagraph(_ paragraph: Paragraph) -> NSMutableAttributedString {
         let result = NSMutableAttributedString()
-        
+
         for child in paragraph.children {
             result.append(renderMarkup(child))
         }
-        
+
         let paragraphStyle = NSMutableParagraphStyle()
         paragraphStyle.lineSpacing = isInBlockquote
-            ? configuration.lineSpacing.quote
-            : configuration.lineSpacing.body
-        
+        ? configuration.lineSpacing.quote
+        : configuration.lineSpacing.body
+
         // 只有不在列表中时才添加段落间距
         if listDepth == 0 {
             paragraphStyle.paragraphSpacing = configuration.paragraphSpacing
         }
-        
+
         if isInBlockquote {
             paragraphStyle.firstLineHeadIndent = configuration.blockquoteIndent
             paragraphStyle.headIndent = configuration.blockquoteIndent
         }
-        
+
         let range = NSRange(location: 0, length: result.length)
         if range.length > 0 {
             result.addAttribute(.paragraphStyle, value: paragraphStyle, range: range)
         }
-        
+
         // 段落末尾添加换行
         if result.length == 0 || !result.string.hasSuffix("\n") {
             result.append(NSAttributedString(string: "\n"))
         }
-        
+
         return result
     }
 
@@ -845,7 +845,7 @@ final class MarkdownParser: MarkdownParserProtocol {
     }
 
     // MARK: - Text
-    
+
     // 在 MarkdownRendererTK2 中添加缓存的 attributes
     private lazy var defaultTextAttributes: [NSAttributedString.Key: Any] = {
         let paragraphStyle = NSMutableParagraphStyle()
@@ -875,75 +875,75 @@ final class MarkdownParser: MarkdownParserProtocol {
     }
 
     /// 处理文本中的 HTML 标签
-    
+
     // MARK: - Strong
-    
+
     private func renderStrong(_ strong: Strong) -> NSMutableAttributedString {
         let result = NSMutableAttributedString()
         for child in strong.children {
             result.append(renderMarkup(child))
         }
-        
+
         let range = NSRange(location: 0, length: result.length)
         if result.length > 0,
            let currentFont = result.attribute(.font, at: 0, effectiveRange: nil) as? UIFont {
             let boldFont = UIFont.systemFont(ofSize: currentFont.pointSize, weight: .bold)
             result.addAttribute(.font, value: boldFont, range: range)
         }
-        
+
         return result
     }
-    
+
     // MARK: - Emphasis
-    
+
     private func renderEmphasis(_ emphasis: Emphasis) -> NSMutableAttributedString {
         let result = NSMutableAttributedString()
         for child in emphasis.children {
             result.append(renderMarkup(child))
         }
-        
+
         let range = NSRange(location: 0, length: result.length)
         if result.length > 0,
            let currentFont = result.attribute(.font, at: 0, effectiveRange: nil) as? UIFont {
             let italicFont = UIFont.italicSystemFont(ofSize: currentFont.pointSize)
             result.addAttribute(.font, value: italicFont, range: range)
         }
-        
+
         return result
     }
-    
+
     // MARK: - Strikethrough
-    
+
     private func renderStrikethrough(_ strikethrough: Strikethrough) -> NSMutableAttributedString {
         let result = NSMutableAttributedString()
         for child in strikethrough.children {
             result.append(renderMarkup(child))
         }
-        
+
         let range = NSRange(location: 0, length: result.length)
         result.addAttribute(.strikethroughStyle, value: NSUnderlineStyle.single.rawValue, range: range)
-        
+
         return result
     }
-    
+
     // MARK: - Link
-    
+
     private func renderLink(_ link: Link) -> NSMutableAttributedString {
         let result = NSMutableAttributedString()
         for child in link.children {
             result.append(renderMarkup(child))
         }
-        
+
         let range = NSRange(location: 0, length: result.length)
         // 显式设置 underlineStyle：TextKit 2 对 .link 属性有默认下划线行为，
         // 必须用 0 明确关闭，而不能仅仅"不设置"
         result.addAttributes([
             .foregroundColor: configuration.linkColor,
             .underlineStyle: configuration.linkUnderlineEnabled
-                ? NSUnderlineStyle.single.rawValue
-                : 0,
+            ? NSUnderlineStyle.single.rawValue
+            : 0
         ], range: range)
-        
+
         if let destination = link.destination {
             if let url = URL(string: destination) {
                 result.addAttribute(.link, value: url, range: range)
@@ -952,24 +952,24 @@ final class MarkdownParser: MarkdownParserProtocol {
                 result.addAttribute(.link, value: url, range: range)
             }
         }
-        
+
         return result
     }
-    
+
     // MARK: - Image
-    
+
     private func renderImage(_ image: Image) -> NSMutableAttributedString {
         // 图片现在作为独立元素处理，这里不再返回 attachment
         return NSMutableAttributedString()
     }
-    
+
     private func createPlaceholderImage(size: CGSize, text: String) -> UIImage {
         let renderer = UIGraphicsImageRenderer(size: size)
         return renderer.image { _ in
             configuration.imagePlaceholderColor.setFill()
             let rect = CGRect(origin: .zero, size: size)
             UIBezierPath(roundedRect: rect, cornerRadius: 8).fill()
-            
+
             let iconSize: CGFloat = 40
             let iconRect = CGRect(
                 x: (size.width - iconSize) / 2,
@@ -977,30 +977,30 @@ final class MarkdownParser: MarkdownParserProtocol {
                 width: iconSize,
                 height: iconSize
             )
-            
+
             let iconConfig = UIImage.SymbolConfiguration(pointSize: 36, weight: .light)
             if let icon = UIImage(systemName: "photo", withConfiguration: iconConfig) {
                 UIColor.secondaryLabel.setFill()
                 icon.draw(in: iconRect)
             }
-            
+
             let paragraphStyle = NSMutableParagraphStyle()
             paragraphStyle.alignment = .center
-            
+
             let attributes: [NSAttributedString.Key: Any] = [
                 .font: UIFont.systemFont(ofSize: 13),
                 .foregroundColor: UIColor.secondaryLabel,
-                .paragraphStyle: paragraphStyle,
+                .paragraphStyle: paragraphStyle
             ]
-            
+
             let displayText = text.isEmpty ? "Loading..." : text
             let textRect = CGRect(x: 16, y: (size.height + iconSize) / 2 - 5, width: size.width - 32, height: 20)
             displayText.draw(in: textRect, withAttributes: attributes)
         }
     }
-    
+
     // MARK: - Inline Code
-    
+
     private func renderInlineCode(_ inlineCode: InlineCode) -> NSMutableAttributedString {
         let text = " \(inlineCode.code) "
         return NSMutableAttributedString(
@@ -1008,10 +1008,10 @@ final class MarkdownParser: MarkdownParserProtocol {
             attributes: [
                 .font: configuration.codeFont,
                 .foregroundColor: configuration.codeTextColor,
-                .backgroundColor: configuration.codeBackgroundColor,
+                .backgroundColor: configuration.codeBackgroundColor
             ])
     }
-    
+
     // MARK: - Code Block
 
     private func renderCodeBlock(_ codeBlock: CodeBlock) -> NSMutableAttributedString {
@@ -1081,18 +1081,18 @@ final class MarkdownParser: MarkdownParserProtocol {
     private func renderUnorderedList(_ unorderedList: UnorderedList) -> NSMutableAttributedString {
         let result = NSMutableAttributedString()
         listDepth += 1
-        
+
         for item in unorderedList.listItems {
             result.append(renderListItem(item))
         }
-        
+
         listDepth -= 1
-        
+
         // 只在最外层列表后添加额外换行
         if listDepth == 0 {
             result.append(NSAttributedString(string: "\n"))
         }
-        
+
         return result
     }
 
@@ -1100,29 +1100,29 @@ final class MarkdownParser: MarkdownParserProtocol {
         let result = NSMutableAttributedString()
         listDepth += 1
         orderedListCounters.append(Int(orderedList.startIndex))
-        
+
         for item in orderedList.listItems {
             result.append(renderListItem(item))
             orderedListCounters[orderedListCounters.count - 1] += 1
         }
-        
+
         orderedListCounters.removeLast()
         listDepth -= 1
-        
+
         // 只在最外层列表后添加额外换行
         if listDepth == 0 {
             result.append(NSAttributedString(string: "\n"))
         }
-        
+
         return result
     }
-    
+
     private func renderListItem(_ listItem: ListItem) -> NSMutableAttributedString {
         let result = NSMutableAttributedString()
-        
+
         let indent = String(repeating: "    ", count: listDepth - 1)
         var bullet: String
-        
+
         if let checkbox = listItem.checkbox {
             bullet = checkbox == .checked ? "☑" : "☐"
         } else if orderedListCounters.isEmpty {
@@ -1131,19 +1131,19 @@ final class MarkdownParser: MarkdownParserProtocol {
         } else {
             bullet = "\(orderedListCounters.last ?? 1)."
         }
-        
+
         let prefix = "\(indent)\(bullet) "
         result.append(
             NSAttributedString(
                 string: prefix,
                 attributes: [
                     .font: configuration.bodyFont,
-                    .foregroundColor: configuration.textColor,
+                    .foregroundColor: configuration.textColor
                 ]))
-        
+
         // 分开处理：先处理非列表内容，再处理子列表
         var hasAddedContent = false
-        
+
         for child in listItem.children {
             if child is UnorderedList || child is OrderedList {
                 // 子列表：确保前面有换行，然后递归渲染
@@ -1167,57 +1167,55 @@ final class MarkdownParser: MarkdownParserProtocol {
                 hasAddedContent = true
             }
         }
-        
+
         // 列表项结尾换行
         if !result.string.hasSuffix("\n") {
             result.append(NSAttributedString(string: "\n"))
         }
-        
+
         return result
     }
-    
+
     // MARK: - Breaks
-    
+
     private func renderSoftBreak() -> NSMutableAttributedString {
         return NSMutableAttributedString(string: " ")
     }
-    
+
     private func renderLineBreak() -> NSMutableAttributedString {
         return NSMutableAttributedString(string: "\n")
     }
-    
+
     // MARK: - HTML
-    
+
     private func renderHTMLBlock(_ html: HTMLBlock) -> NSMutableAttributedString {
         flushTextBuffer()
         elements.append(.rawHTML(html.rawHTML))
         return NSMutableAttributedString()
     }
-    
+
     private func renderInlineHTML(_ html: InlineHTML) -> NSMutableAttributedString {
         let htmlString = html.rawHTML
-
-        
 
         // 降级: 显示为代码样式
         return NSMutableAttributedString(
             string: htmlString,
             attributes: [
                 .font: configuration.codeFont,
-                .foregroundColor: UIColor.secondaryLabel,
+                .foregroundColor: UIColor.secondaryLabel
             ])
     }
-    
+
     // MARK: - Syntax Highlighting
 
     private func applySyntaxHighlighting(to code: String, language: String?) -> NSAttributedString {
         let result = NSMutableAttributedString(string: code)
         let fullRange = NSRange(location: 0, length: result.length)
-        
+
         // 基础样式
         result.addAttributes([
             .font: configuration.codeFont,
-            .foregroundColor: configuration.codeTextColor,
+            .foregroundColor: configuration.codeTextColor
         ], range: fullRange)
 
         let lang = language?.lowercased() ?? ""
@@ -1301,17 +1299,17 @@ final class MarkdownParser: MarkdownParserProtocol {
             "@ObservedObject", "@EnvironmentObject", "@Environment", "@available", "@objc"
         ]
         applyPattern("\\b(" + keywords.joined(separator: "|") + ")\\b", to: attrString, color: colors.keyword)
-        
+
         // 类型（大写开头）
         applyPattern("\\b([A-Z][a-zA-Z0-9_]*)\\b", to: attrString, color: colors.type)
-        
+
         // 字符串
         applyPattern("\"\"\"[\\s\\S]*?\"\"\"", to: attrString, color: colors.string)
         applyPattern("\"(?:[^\"\\\\]|\\\\.)*\"", to: attrString, color: colors.string)
-        
+
         // 数字
         applyPattern("\\b\\d+\\.?\\d*\\b", to: attrString, color: colors.number)
-        
+
         // 注释（最后处理，覆盖其他）
         applyPattern("//.*$", to: attrString, color: colors.comment, options: .anchorsMatchLines)
         applyPattern("/\\*[\\s\\S]*?\\*/", to: attrString, color: colors.comment)
@@ -1330,19 +1328,19 @@ final class MarkdownParser: MarkdownParserProtocol {
             "nonatomic", "atomic", "strong", "weak", "copy", "assign", "retain", "readonly", "readwrite"
         ]
         applyPattern("\\b(" + keywords.joined(separator: "|") + ")\\b|(@\\w+)", to: attrString, color: colors.keyword)
-        
+
         // 类型
         applyPattern("\\b(NS|UI|CG|CF|CA)[A-Z][a-zA-Z0-9_]*\\b", to: attrString, color: colors.type)
-        
+
         // 字符串
         applyPattern("@?\"(?:[^\"\\\\]|\\\\.)*\"", to: attrString, color: colors.string)
-        
+
         // 数字
         applyPattern("\\b\\d+\\.?\\d*[fFlL]?\\b", to: attrString, color: colors.number)
-        
+
         // 预处理
         applyPattern("^\\s*#\\w+.*$", to: attrString, color: colors.preprocessor, options: .anchorsMatchLines)
-        
+
         // 注释
         applyPattern("//.*$", to: attrString, color: colors.comment, options: .anchorsMatchLines)
         applyPattern("/\\*[\\s\\S]*?\\*/", to: attrString, color: colors.comment)
@@ -1358,18 +1356,18 @@ final class MarkdownParser: MarkdownParserProtocol {
             "void", "with", "debugger", "arguments", "eval"
         ]
         applyPattern("\\b(" + keywords.joined(separator: "|") + ")\\b", to: attrString, color: colors.keyword)
-        
+
         // 函数调用
         applyPatternGroup("\\b([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\(", to: attrString, color: colors.function)
-        
+
         // 字符串
         applyPattern("`[^`]*`", to: attrString, color: colors.string)
         applyPattern("\"(?:[^\"\\\\]|\\\\.)*\"", to: attrString, color: colors.string)
         applyPattern("'(?:[^'\\\\]|\\\\.)*'", to: attrString, color: colors.string)
-        
+
         // 数字
         applyPattern("\\b\\d+\\.?\\d*\\b", to: attrString, color: colors.number)
-        
+
         // 注释
         applyPattern("//.*$", to: attrString, color: colors.comment, options: .anchorsMatchLines)
         applyPattern("/\\*[\\s\\S]*?\\*/", to: attrString, color: colors.comment)
@@ -1383,22 +1381,22 @@ final class MarkdownParser: MarkdownParserProtocol {
             "True", "False", "None", "self", "cls", "async", "await", "assert", "del"
         ]
         applyPattern("\\b(" + keywords.joined(separator: "|") + ")\\b", to: attrString, color: colors.keyword)
-        
+
         // 装饰器
         applyPattern("@\\w+", to: attrString, color: colors.preprocessor)
-        
+
         // 函数定义
         applyPatternGroup("\\bdef\\s+([a-zA-Z_][a-zA-Z0-9_]*)", to: attrString, color: colors.function)
-        
+
         // 字符串
         applyPattern("\"\"\"[\\s\\S]*?\"\"\"", to: attrString, color: colors.string)
         applyPattern("'''[\\s\\S]*?'''", to: attrString, color: colors.string)
         applyPattern("f?\"(?:[^\"\\\\]|\\\\.)*\"", to: attrString, color: colors.string)
         applyPattern("f?'(?:[^'\\\\]|\\\\.)*'", to: attrString, color: colors.string)
-        
+
         // 数字
         applyPattern("\\b\\d+\\.?\\d*\\b", to: attrString, color: colors.number)
-        
+
         // 注释
         applyPattern("#.*$", to: attrString, color: colors.comment, options: .anchorsMatchLines)
     }
@@ -1413,19 +1411,19 @@ final class MarkdownParser: MarkdownParserProtocol {
             "null", "true", "false", "instanceof", "import", "package", "assert"
         ]
         applyPattern("\\b(" + keywords.joined(separator: "|") + ")\\b", to: attrString, color: colors.keyword)
-        
+
         // 注解
         applyPattern("@\\w+", to: attrString, color: colors.preprocessor)
-        
+
         // 类型
         applyPattern("\\b([A-Z][a-zA-Z0-9_]*)\\b", to: attrString, color: colors.type)
-        
+
         // 字符串
         applyPattern("\"(?:[^\"\\\\]|\\\\.)*\"", to: attrString, color: colors.string)
-        
+
         // 数字
         applyPattern("\\b\\d+\\.?\\d*[fFdDlL]?\\b", to: attrString, color: colors.number)
-        
+
         // 注释
         applyPattern("//.*$", to: attrString, color: colors.comment, options: .anchorsMatchLines)
         applyPattern("/\\*[\\s\\S]*?\\*/", to: attrString, color: colors.comment)
@@ -1440,14 +1438,14 @@ final class MarkdownParser: MarkdownParserProtocol {
             "float32", "float64", "complex64", "complex128", "byte", "rune", "string", "bool", "error"
         ]
         applyPattern("\\b(" + keywords.joined(separator: "|") + ")\\b", to: attrString, color: colors.keyword)
-        
+
         // 字符串
         applyPattern("`[^`]*`", to: attrString, color: colors.string)
         applyPattern("\"(?:[^\"\\\\]|\\\\.)*\"", to: attrString, color: colors.string)
-        
+
         // 数字
         applyPattern("\\b\\d+\\.?\\d*\\b", to: attrString, color: colors.number)
-        
+
         // 注释
         applyPattern("//.*$", to: attrString, color: colors.comment, options: .anchorsMatchLines)
         applyPattern("/\\*[\\s\\S]*?\\*/", to: attrString, color: colors.comment)
@@ -1462,19 +1460,19 @@ final class MarkdownParser: MarkdownParserProtocol {
             "final", "macro", "override", "priv", "typeof", "unsized", "virtual", "yield"
         ]
         applyPattern("\\b(" + keywords.joined(separator: "|") + ")\\b", to: attrString, color: colors.keyword)
-        
+
         // 类型
         applyPattern("\\b([A-Z][a-zA-Z0-9_]*)\\b", to: attrString, color: colors.type)
-        
+
         // 宏
         applyPattern("\\b\\w+!", to: attrString, color: colors.preprocessor)
-        
+
         // 字符串
         applyPattern("\"(?:[^\"\\\\]|\\\\.)*\"", to: attrString, color: colors.string)
-        
+
         // 数字
         applyPattern("\\b\\d+\\.?\\d*\\b", to: attrString, color: colors.number)
-        
+
         // 注释
         applyPattern("//.*$", to: attrString, color: colors.comment, options: .anchorsMatchLines)
         applyPattern("/\\*[\\s\\S]*?\\*/", to: attrString, color: colors.comment)
@@ -1491,16 +1489,16 @@ final class MarkdownParser: MarkdownParserProtocol {
             "nullptr", "inline", "explicit", "friend", "mutable", "operator", "override", "final"
         ]
         applyPattern("\\b(" + keywords.joined(separator: "|") + ")\\b", to: attrString, color: colors.keyword)
-        
+
         // 预处理
         applyPattern("^\\s*#\\w+.*$", to: attrString, color: colors.preprocessor, options: .anchorsMatchLines)
-        
+
         // 字符串
         applyPattern("\"(?:[^\"\\\\]|\\\\.)*\"", to: attrString, color: colors.string)
-        
+
         // 数字
         applyPattern("\\b\\d+\\.?\\d*[fFlLuU]*\\b", to: attrString, color: colors.number)
-        
+
         // 注释
         applyPattern("//.*$", to: attrString, color: colors.comment, options: .anchorsMatchLines)
         applyPattern("/\\*[\\s\\S]*?\\*/", to: attrString, color: colors.comment)
@@ -1515,17 +1513,17 @@ final class MarkdownParser: MarkdownParserProtocol {
             "include", "extend", "attr_reader", "attr_writer", "attr_accessor", "private", "public", "protected"
         ]
         applyPattern("\\b(" + keywords.joined(separator: "|") + ")\\b", to: attrString, color: colors.keyword)
-        
+
         // 符号
         applyPattern(":\\w+", to: attrString, color: colors.string)
-        
+
         // 字符串
         applyPattern("\"(?:[^\"\\\\]|\\\\.)*\"", to: attrString, color: colors.string)
         applyPattern("'(?:[^'\\\\]|\\\\.)*'", to: attrString, color: colors.string)
-        
+
         // 数字
         applyPattern("\\b\\d+\\.?\\d*\\b", to: attrString, color: colors.number)
-        
+
         // 注释
         applyPattern("#.*$", to: attrString, color: colors.comment, options: .anchorsMatchLines)
     }
@@ -1533,13 +1531,13 @@ final class MarkdownParser: MarkdownParserProtocol {
     private func highlightJSON(_ attrString: NSMutableAttributedString, colors: SyntaxHighlightColors) {
         // 键
         applyPattern("\"[^\"]+\"\\s*:", to: attrString, color: colors.property)
-        
+
         // 字符串值
         applyPattern(":\\s*\"[^\"]*\"", to: attrString, color: colors.string)
-        
+
         // 布尔和 null
         applyPattern("\\b(true|false|null)\\b", to: attrString, color: colors.keyword)
-        
+
         // 数字
         applyPattern("\\b-?\\d+\\.?\\d*([eE][+-]?\\d+)?\\b", to: attrString, color: colors.number)
     }
@@ -1548,14 +1546,14 @@ final class MarkdownParser: MarkdownParserProtocol {
         // 标签
         applyPattern("</?\\w+", to: attrString, color: colors.keyword)
         applyPattern("/?>", to: attrString, color: colors.keyword)
-        
+
         // 属性名
         applyPattern("\\b\\w+(?==)", to: attrString, color: colors.property)
-        
+
         // 属性值
         applyPattern("\"[^\"]*\"", to: attrString, color: colors.string)
         applyPattern("'[^']*'", to: attrString, color: colors.string)
-        
+
         // 注释
         applyPattern("<!--[\\s\\S]*?-->", to: attrString, color: colors.comment)
     }
@@ -1563,16 +1561,16 @@ final class MarkdownParser: MarkdownParserProtocol {
     private func highlightCSS(_ attrString: NSMutableAttributedString, colors: SyntaxHighlightColors) {
         // 选择器
         applyPattern("[.#]?[a-zA-Z_][a-zA-Z0-9_-]*\\s*\\{", to: attrString, color: colors.keyword)
-        
+
         // 属性
         applyPattern("\\b[a-z-]+(?=\\s*:)", to: attrString, color: colors.property)
-        
+
         // 值
         applyPattern(":\\s*[^;]+", to: attrString, color: colors.string)
-        
+
         // 数字
         applyPattern("\\b\\d+\\.?\\d*(px|em|rem|%|vh|vw)?\\b", to: attrString, color: colors.number)
-        
+
         // 注释
         applyPattern("/\\*[\\s\\S]*?\\*/", to: attrString, color: colors.comment)
     }
@@ -1591,13 +1589,13 @@ final class MarkdownParser: MarkdownParserProtocol {
             "limit", "offset", "union", "all", "distinct", "count", "sum", "avg", "max", "min"
         ]
         applyPattern("\\b(" + keywords.joined(separator: "|") + ")\\b", to: attrString, color: colors.keyword)
-        
+
         // 字符串
         applyPattern("'[^']*'", to: attrString, color: colors.string)
-        
+
         // 数字
         applyPattern("\\b\\d+\\.?\\d*\\b", to: attrString, color: colors.number)
-        
+
         // 注释
         applyPattern("--.*$", to: attrString, color: colors.comment, options: .anchorsMatchLines)
         applyPattern("/\\*[\\s\\S]*?\\*/", to: attrString, color: colors.comment)
@@ -1611,14 +1609,14 @@ final class MarkdownParser: MarkdownParserProtocol {
             "true", "false", "test"
         ]
         applyPattern("\\b(" + keywords.joined(separator: "|") + ")\\b", to: attrString, color: colors.keyword)
-        
+
         // 变量
         applyPattern("\\$\\{?\\w+\\}?", to: attrString, color: colors.property)
-        
+
         // 字符串
         applyPattern("\"(?:[^\"\\\\]|\\\\.)*\"", to: attrString, color: colors.string)
         applyPattern("'[^']*'", to: attrString, color: colors.string)
-        
+
         // 注释
         applyPattern("#.*$", to: attrString, color: colors.comment, options: .anchorsMatchLines)
     }
@@ -1626,17 +1624,17 @@ final class MarkdownParser: MarkdownParserProtocol {
     private func highlightYAML(_ attrString: NSMutableAttributedString, colors: SyntaxHighlightColors) {
         // 键
         applyPattern("^\\s*[\\w-]+(?=\\s*:)", to: attrString, color: colors.property, options: .anchorsMatchLines)
-        
+
         // 布尔和 null
         applyPattern("\\b(true|false|yes|no|null|~)\\b", to: attrString, color: colors.keyword)
-        
+
         // 字符串
         applyPattern("\"[^\"]*\"", to: attrString, color: colors.string)
         applyPattern("'[^']*'", to: attrString, color: colors.string)
-        
+
         // 数字
         applyPattern("\\b\\d+\\.?\\d*\\b", to: attrString, color: colors.number)
-        
+
         // 注释
         applyPattern("#.*$", to: attrString, color: colors.comment, options: .anchorsMatchLines)
     }
@@ -1649,20 +1647,20 @@ final class MarkdownParser: MarkdownParserProtocol {
             "true", "false", "null", "nil", "void", "int", "string", "bool", "float", "double"
         ]
         applyPattern("\\b(" + keywords.joined(separator: "|") + ")\\b", to: attrString, color: colors.keyword)
-        
+
         // 字符串
         applyPattern("\"(?:[^\"\\\\]|\\\\.)*\"", to: attrString, color: colors.string)
         applyPattern("'(?:[^'\\\\]|\\\\.)*'", to: attrString, color: colors.string)
-        
+
         // 数字
         applyPattern("\\b\\d+\\.?\\d*\\b", to: attrString, color: colors.number)
-        
+
         // 注释
         applyPattern("//.*$", to: attrString, color: colors.comment, options: .anchorsMatchLines)
         applyPattern("#.*$", to: attrString, color: colors.comment, options: .anchorsMatchLines)
         applyPattern("/\\*[\\s\\S]*?\\*/", to: attrString, color: colors.comment)
     }
-    
+
     func extractHeadings(from document: Document) -> (items: [MarkdownTOCItem], tocSectionId: String?) {
         var items: [MarkdownTOCItem] = []
         var index = 0
@@ -1677,18 +1675,18 @@ final class MarkdownParser: MarkdownParserProtocol {
         if let heading = markup as? Heading {
             let title = heading.plainText
             let id = "heading-\(index)"
-            
+
             // 检测是否是“目录”标题
             let tocKeywords = ["目录", "table of contents", "toc", "contents", "索引"]
             let lowerTitle = title.lowercased()
             if tocKeywords.contains(where: { lowerTitle.contains($0) }) {
                 detectedTOCSectionId = id  // 记录下来
             }
-            
+
             items.append(MarkdownTOCItem(level: heading.level, title: title, id: id))
             index += 1
         }
-        
+
         for child in markup.children {
             extractHeadingsRecursive(from: child, index: &index, items: &items)
         }

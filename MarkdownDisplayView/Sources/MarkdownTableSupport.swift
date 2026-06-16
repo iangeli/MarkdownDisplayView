@@ -47,11 +47,11 @@ struct MarkdownTableLayoutCalculator {
         // Cap max width per column (e.g., 300) to prevent super wide columns
         // But also ensure we don't shrink too much
         columnWidths = columnWidths.map { min($0, 300) }
-        
+
         // 2. Calculate Row Heights
         // We need to know exact height of each row given the column width
         var rowHeights: [CGFloat] = []
-        
+
         func measureHeight(_ text: NSAttributedString, width: CGFloat) -> CGFloat {
             let availableWidth = width - 24 // Padding
             return text.boundingRect(
@@ -88,7 +88,7 @@ struct MarkdownTableLayoutCalculator {
         // If table is smaller than screen, use table width.
         // If table is larger, use screen width (and scroll internally).
         let frameWidth = min(totalWidth, containerWidth)
-        
+
         return (columnWidths, rowHeights, CGSize(width: frameWidth, height: totalHeight))
     }
 }
@@ -98,61 +98,61 @@ struct MarkdownTableLayoutCalculator {
 class MarkdownTableLayout: UICollectionViewLayout {
     var columnWidths: [CGFloat] = []
     var rowHeights: [CGFloat] = []
-    
+
     private var layoutAttributes: [IndexPath: UICollectionViewLayoutAttributes] = [:]
     private var contentSize: CGSize = .zero
-    
+
     override func prepare() {
         super.prepare()
         layoutAttributes.removeAll()
-        
+
         guard !columnWidths.isEmpty && !rowHeights.isEmpty else {
             contentSize = .zero
             return
         }
-        
+
         var yOffset: CGFloat = 0
         var xOffsets: [CGFloat] = []
         var currentX: CGFloat = 0
-        
+
         for width in columnWidths {
             xOffsets.append(currentX)
             currentX += width
         }
-        
+
         let totalWidth = currentX
-        
+
         for section in 0..<rowHeights.count {
             let height = rowHeights[section]
-            
+
             for item in 0..<columnWidths.count {
                 let indexPath = IndexPath(item: item, section: section)
                 let attributes = UICollectionViewLayoutAttributes(forCellWith: indexPath)
-                
+
                 attributes.frame = CGRect(
                     x: xOffsets[item],
                     y: yOffset,
                     width: columnWidths[item],
                     height: height
                 )
-                
+
                 layoutAttributes[indexPath] = attributes
             }
-            
+
             yOffset += height
         }
-        
+
         contentSize = CGSize(width: totalWidth, height: yOffset)
     }
-    
+
     override var collectionViewContentSize: CGSize {
         return contentSize
     }
-    
+
     override func layoutAttributesForElements(in rect: CGRect) -> [UICollectionViewLayoutAttributes]? {
         return layoutAttributes.values.filter { $0.frame.intersects(rect) }
     }
-    
+
     override func layoutAttributesForItem(at indexPath: IndexPath) -> UICollectionViewLayoutAttributes? {
         return layoutAttributes[indexPath]
     }
@@ -162,40 +162,40 @@ class MarkdownTableLayout: UICollectionViewLayout {
 
 class MarkdownTableCell: UICollectionViewCell {
     static let identifier = "MarkdownTableCell"
-    
+
     private let label = UILabel()
     private let border = UIView()
-    
+
     override init(frame: CGRect) {
         super.init(frame: frame)
-        
+
         contentView.addSubview(label)
         label.numberOfLines = 0
         label.translatesAutoresizingMaskIntoConstraints = false
-        
+
         contentView.addSubview(border)
         border.translatesAutoresizingMaskIntoConstraints = false
-        
+
         NSLayoutConstraint.activate([
             label.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 12),
             label.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -12),
             label.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 10),
             label.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -10),
-            
+
             border.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
             border.topAnchor.constraint(equalTo: contentView.topAnchor),
             border.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
             border.widthAnchor.constraint(equalToConstant: 0.5)
         ])
     }
-    
+
     required init?(coder: NSCoder) { fatalError() }
 
     override func prepareForReuse() {
         super.prepareForReuse()
         label.attributedText = nil
     }
-    
+
     func configure(
         text: NSAttributedString,
         isHeader: Bool,
@@ -255,23 +255,23 @@ private extension NSAttributedString {
 // MARK: - CollectionView Wrapper
 
 class MarkdownTableCollectionView: UIView, UICollectionViewDataSource, UICollectionViewDelegate {
-    
+
     private var collectionView: UICollectionView!
     private let attachment: MarkdownTableAttachment
-    
+
     init(frame: CGRect, attachment: MarkdownTableAttachment) {
         self.attachment = attachment
         super.init(frame: frame)
         setupCollectionView()
     }
-    
+
     required init?(coder: NSCoder) { fatalError() }
-    
+
     private func setupCollectionView() {
         let layout = MarkdownTableLayout()
         layout.columnWidths = attachment.columnWidths
         layout.rowHeights = attachment.rowHeights
-        
+
         collectionView = UICollectionView(frame: bounds, collectionViewLayout: layout)
         collectionView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         collectionView.backgroundColor = .clear
@@ -279,33 +279,33 @@ class MarkdownTableCollectionView: UIView, UICollectionViewDataSource, UICollect
         collectionView.delegate = self
         collectionView.allowsSelection = true
         collectionView.register(MarkdownTableCell.self, forCellWithReuseIdentifier: MarkdownTableCell.identifier)
-        
+
         // 允许水平滚动
-        collectionView.isScrollEnabled = true 
+        collectionView.isScrollEnabled = true
         // 禁用垂直滚动（由外层处理），但 contentSize.height = frame.height，所以本身也不会垂直滚
         collectionView.showsHorizontalScrollIndicator = true
         collectionView.showsVerticalScrollIndicator = false
-        
+
         addSubview(collectionView)
     }
-    
+
     // MARK: DataSource
-    
+
     func numberOfSections(in collectionView: UICollectionView) -> Int {
         // Headers (section 0) + Rows
         return 1 + attachment.tableData.rows.count
     }
-    
+
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         return attachment.columnWidths.count
     }
-    
+
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: MarkdownTableCell.identifier, for: indexPath) as! MarkdownTableCell
-        
+
         let isHeader = indexPath.section == 0
         let rowData: [NSAttributedString]
-        
+
         if isHeader {
             rowData = attachment.tableData.headers
             cell.backgroundColor = attachment.configuration.tableHeaderBackgroundColor
@@ -318,7 +318,7 @@ class MarkdownTableCollectionView: UIView, UICollectionViewDataSource, UICollect
                 cell.backgroundColor = attachment.configuration.tableRowBackgroundColor
             }
         }
-        
+
         // Safely get text
         let text: NSAttributedString
         if indexPath.item < rowData.count {
@@ -330,7 +330,7 @@ class MarkdownTableCollectionView: UIView, UICollectionViewDataSource, UICollect
         // 列对齐优先使用 Markdown 表格语法中的列对齐，缺省时回退为左对齐
         let textAlignment = attachment.tableData.columnAlignments[safe: indexPath.item]
             .flatMap { $0 } ?? .left
-        
+
         // Use semi-transparent border to mimic grid
         cell.configure(
             text: text,
@@ -338,7 +338,7 @@ class MarkdownTableCollectionView: UIView, UICollectionViewDataSource, UICollect
             borderColor: attachment.configuration.tableBorderColor.withAlphaComponent(0.3),
             textAlignment: textAlignment
         )
-        
+
         return cell
     }
 
@@ -358,7 +358,7 @@ class MarkdownTableAttachment: NSTextAttachment {
     let rowHeights: [CGFloat]
     let totalSize: CGSize
     let onLinkTap: ((URL) -> Void)?
-    
+
     init(
         data: MarkdownTableData,
         config: MarkdownConfiguration,
@@ -368,7 +368,7 @@ class MarkdownTableAttachment: NSTextAttachment {
         self.tableData = data
         self.configuration = config
         self.onLinkTap = onLinkTap
-        
+
         // Pre-calculate layout
         let result = MarkdownTableLayoutCalculator.calculate(
             data: data,
@@ -378,18 +378,18 @@ class MarkdownTableAttachment: NSTextAttachment {
         self.columnWidths = result.columnWidths
         self.rowHeights = result.rowHeights
         self.totalSize = result.totalSize
-        
+
         super.init(data: nil, ofType: nil)
-        
+
         // Set an empty image to prevent the default placeholder icon from appearing
         self.image = UIImage()
-        
+
         // Set attachment bounds
         self.bounds = CGRect(origin: .zero, size: self.totalSize)
     }
-    
+
     required init?(coder: NSCoder) { fatalError() }
-    
+
     override func viewProvider(for parentView: UIView?, location: NSTextLocation, textContainer: NSTextContainer?) -> NSTextAttachmentViewProvider? {
         return MarkdownTableAttachmentProvider(
             textAttachment: self,

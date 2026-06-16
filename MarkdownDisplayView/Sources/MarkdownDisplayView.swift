@@ -15,9 +15,8 @@ import NaturalLanguage
 @available(iOS 15.0, *)
 public final class MarkdownViewTextKit: UIView {
 
-    
     // MARK: - Properties
-    
+
     private lazy var typewriterEngine: TypewriterEngine = {
         let engine = TypewriterEngine()
         engine.onComplete = { [weak self] in
@@ -53,14 +52,14 @@ public final class MarkdownViewTextKit: UIView {
             elementGapDuration: elementGapDuration
         )
     }
-    
+
     public var configuration: MarkdownConfiguration = .default {
         didSet {
             streamBuffer.updateMinModuleLength(configuration.streamMinModuleLength)
             scheduleRerender()
         }
     }
-    
+
     public var markdown: String = "" {
         didSet {
             // 🔍 性能监控：记录渲染开始时间
@@ -98,7 +97,7 @@ public final class MarkdownViewTextKit: UIView {
             precalculatedTextHeights: preparedContent.fixedTextHeights
         )
     }
-    
+
     public var onLinkTap: ((URL) -> Void)?
     public var onImageTap: ((String) -> Void)?
     public var onHeightChange: ((CGFloat) -> Void)?
@@ -110,9 +109,9 @@ public final class MarkdownViewTextKit: UIView {
     private var streamAtomicRanges: [NSRange] = []
     // ⚡️ 性能优化：原子区间起始位置索引（O(1)查找）
     private var atomicRangeStartSet: Set<Int> = []
-    
+
     public private(set) var tableOfContents: [MarkdownTOCItem] = []
-    
+
     private let contentStackView: UIStackView = {
         let sv = UIStackView()
         sv.axis = .vertical
@@ -120,7 +119,7 @@ public final class MarkdownViewTextKit: UIView {
         sv.spacing = 0
         return sv
     }()
-    
+
     private var cancellables = Set<AnyCancellable>()
     private var imageAttachments: [(attachment: MarkdownImageAttachment, urlString: String)] = []
     private var renderWorkItem: DispatchWorkItem?
@@ -135,7 +134,7 @@ public final class MarkdownViewTextKit: UIView {
     // 渲染版本控制（解决竞态问题）
     private var renderVersion: Int = 0
     private let renderVersionLock = NSLock()
-    
+
     /// About streaming
     private var streamTimer: Timer?
     private var streamingStartTimestamp: CFAbsoluteTime = 0  // ⭐️ 流式开始时间戳
@@ -158,11 +157,11 @@ public final class MarkdownViewTextKit: UIView {
     // 原因：基于内容hash的缓存策略会导致不同位置的相似内容被错误复用
     // private var viewCache: [String: UIView] = [:]
     // private let maxCacheSize: Int = 100
-    
+
     // 添加属性
     private var tocSectionView: UIView?
     private var tocSectionId: String?
-    
+
     // 脚注优化缓存
     private var currentFootnotes: [MarkdownFootnote] = []
     private var cachedFootnoteView: UIView?
@@ -193,7 +192,7 @@ public final class MarkdownViewTextKit: UIView {
         var cachedFootnotes: [MarkdownFootnote] = []     // 已解析的脚注
         var cachedAttachments: [(attachment: MarkdownImageAttachment, urlString: String)] = []
         var cachedTOCItems: [MarkdownTOCItem] = []
-        var tocSectionId: String? = nil
+        var tocSectionId: String?
     }
 
     /// 解析缓存实例
@@ -246,7 +245,7 @@ public final class MarkdownViewTextKit: UIView {
     public var hasTableOfContentsSection: Bool {
         return tocSectionView != nil
     }
-    
+
     private var autoScrollEnabled: Bool = false
 
     // 流式渲染节流（避免过度渲染）
@@ -331,7 +330,7 @@ public final class MarkdownViewTextKit: UIView {
         super.init(frame: frame)
         setupUI()
     }
-    
+
     public required init?(coder: NSCoder) {
         super.init(coder: coder)
         setupUI()
@@ -350,7 +349,7 @@ public final class MarkdownViewTextKit: UIView {
         self.markdown = markdown
         scheduleRerender()
     }
-    
+
     private func setupUI() {
         addSubview(contentStackView)
         contentStackView.translatesAutoresizingMaskIntoConstraints = false
@@ -358,7 +357,7 @@ public final class MarkdownViewTextKit: UIView {
             contentStackView.topAnchor.constraint(equalTo: topAnchor),
             contentStackView.leadingAnchor.constraint(equalTo: leadingAnchor),
             contentStackView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            contentStackView.bottomAnchor.constraint(equalTo: bottomAnchor),
+            contentStackView.bottomAnchor.constraint(equalTo: bottomAnchor)
         ])
 
         // ⚡️ 监听内存警告，清理视图缓存
@@ -373,9 +372,9 @@ public final class MarkdownViewTextKit: UIView {
     @objc private func handleMemoryWarning() {
         clearViewCache()
     }
-    
+
     // MARK: - Public Methods
-    
+
     /// 跳转到文档内的目录区域
     public func backToTableOfContentsSection() {
         guard let view = tocSectionView else { return }
@@ -412,10 +411,10 @@ public final class MarkdownViewTextKit: UIView {
         }
         return false
     }
-    
+
     public func scrollToTOCItem(_ item: MarkdownTOCItem) {
         guard let view = headingViews[item.id] else { return }
-        
+
         var scrollView: UIScrollView?
         var superview = self.superview
         while superview != nil {
@@ -425,17 +424,17 @@ public final class MarkdownViewTextKit: UIView {
             }
             superview = superview?.superview
         }
-        
+
         guard let sv = scrollView else { return }
-        
+
         let frame = view.convert(view.bounds, to: sv)
         let targetY = frame.origin.y - 12
         let maxY = max(0, sv.contentSize.height - sv.bounds.height + sv.contentInset.bottom)
         let clampedY = min(max(0, targetY), maxY)
-        
+
         sv.setContentOffset(CGPoint(x: 0, y: clampedY), animated: true)
     }
-    
+
     /// 手动播放视图的打字机动画（例如用于目录 TOC）
     /// - Parameter view: 需要动画显示的视图
     public func playTypewriterAnimation(for view: UIView) {
@@ -443,31 +442,31 @@ public final class MarkdownViewTextKit: UIView {
             view.isHidden = false
             return
         }
-        
+
         // 1. 先隐藏视图，防止闪烁
         view.isHidden = true
-        
+
         // 2. 加入打字机队列
         typewriterEngine.enqueue(view: view, isRoot: true)
-        
+
         // 3. 启动引擎
         typewriterEngine.start()
     }
-    
+
     public func generateTOCView() -> UIView {
         // 1. 准备整段富文本
         let tocTotalAttrString = NSMutableAttributedString()
-        
+
         for (index, item) in tableOfContents.enumerated() {
             // 文本内容
             let itemText = "• " + item.title + (index < tableOfContents.count - 1 ? "\n" : "")
             let attrString = NSMutableAttributedString(string: itemText)
             let range = NSRange(location: 0, length: attrString.length)
-            
+
             // 基础样式
             attrString.addAttribute(.font, value: configuration.bodyFont, range: range)
             attrString.addAttribute(.foregroundColor, value: configuration.tocTextColor, range: range)
-            
+
             // 链接 (Fake Link) - 确保 ID 被正确编码
             if let encodedId = item.id.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed),
                let url = URL(string: "toc://\(encodedId)") {
@@ -479,7 +478,7 @@ public final class MarkdownViewTextKit: UIView {
                     range: range
                 )
             }
-            
+
             // 缩进样式
             let indent = CGFloat(item.level - 1) * 20.0
             let paragraphStyle = NSMutableParagraphStyle()
@@ -487,10 +486,10 @@ public final class MarkdownViewTextKit: UIView {
             paragraphStyle.firstLineHeadIndent = indent
             paragraphStyle.paragraphSpacing = 6 // 行间距
             attrString.addAttribute(.paragraphStyle, value: paragraphStyle, range: range)
-            
+
             tocTotalAttrString.append(attrString)
         }
-        
+
         // 2. 创建单个 TextView
         let containerWidth = bounds.width > 0 ? bounds.width : UIScreen.main.bounds.width - 32
         let tocContainer = createTextView(
@@ -498,7 +497,7 @@ public final class MarkdownViewTextKit: UIView {
             width: containerWidth,
             insets: UIEdgeInsets(top: 8, left: 0, bottom: 8, right: 0)
         )
-        
+
         // 3. 绑定点击事件
         if let textView = tocContainer.subviews.first(where: { $0 is MarkdownTextViewTK2 }) as? MarkdownTextViewTK2 {
             textView.onLinkTap = { [weak self] url in
@@ -515,10 +514,10 @@ public final class MarkdownViewTextKit: UIView {
                 }
             }
         }
-        
+
         return tocContainer
     }
-    
+
     @objc private func tocItemTapped(_ sender: UIButton) {
         let index = sender.tag
         guard index < tableOfContents.count else { return }
@@ -526,7 +525,7 @@ public final class MarkdownViewTextKit: UIView {
         onTOCItemTap?(item)
         scrollToTOCItem(item)
     }
-    
+
     // MARK: - Rendering
 
     /// 判断两个元素是否完全相等（用于嵌套复用检查）
@@ -553,7 +552,7 @@ public final class MarkdownViewTextKit: UIView {
         case (.rawHTML(let oldHTML), .rawHTML(let newHTML)):
             return oldHTML == newHTML
 
-        // ⚡️ 嵌套结构的深度比较
+            // ⚡️ 嵌套结构的深度比较
         case (.quote(let oldChildren, let oldLevel), .quote(let newChildren, let newLevel)):
             guard oldLevel == newLevel, oldChildren.count == newChildren.count else { return false }
             for (oldChild, newChild) in zip(oldChildren, newChildren) {
@@ -582,7 +581,7 @@ public final class MarkdownViewTextKit: UIView {
         case (.table(let oldData), .table(let newData)):
             // 简单比较行列数
             return oldData.headers.count == newData.headers.count &&
-                   oldData.rows.count == newData.rows.count
+            oldData.rows.count == newData.rows.count
 
         case (.custom(let oldData), .custom(let newData)):
             return oldData == newData
@@ -646,9 +645,9 @@ public final class MarkdownViewTextKit: UIView {
                     textView.linkTextAttributes = [
                         .foregroundColor: configuration.linkColor,
                         .underlineStyle: configuration.linkUnderlineEnabled
-                            ? NSUnderlineStyle.single.rawValue : 0,
+                        ? NSUnderlineStyle.single.rawValue : 0
                     ]
-                    
+
                     // ⭐️ 核心修复：显式指定 containerWidth 进行布局计算
                     // 之前的 didSet 逻辑使用的是 textView.bounds.width，这可能是旧的或者错误的（例如 Cell 复用时）
                     // 导致计算出的高度不匹配当前的实际宽度要求 -> 文字被截断
@@ -668,7 +667,7 @@ public final class MarkdownViewTextKit: UIView {
                     }
                 }
             }
-            
+
             // 更新文本并强制布局
             if let textView = view as? MarkdownTextViewTK2 {
                 if textView.attributedText != newText {
@@ -694,7 +693,7 @@ public final class MarkdownViewTextKit: UIView {
             }
             return true
 
-        // ⚡️ Quote 子元素复用优化（避免重复创建嵌套公式）
+            // ⚡️ Quote 子元素复用优化（避免重复创建嵌套公式）
         case (.quote(let oldChildren, let oldLevel), .quote(let newChildren, let newLevel)):
             // 层级不同，需要重建
             if oldLevel != newLevel {
@@ -775,7 +774,7 @@ public final class MarkdownViewTextKit: UIView {
 
         case (.table(let oldData), .table(let newData)):
             if oldData == newData { return true }
-            
+
             // Re-create attachment with new data
             let attachment = MarkdownTableAttachment(
                 data: newData,
@@ -785,13 +784,13 @@ public final class MarkdownViewTextKit: UIView {
                     self?.handleLinkTap(url)
                 }
             )
-            
+
             let paragraphStyle = NSMutableParagraphStyle()
             paragraphStyle.alignment = .left
-            
+
             let attrString = NSMutableAttributedString(attachment: attachment)
             attrString.addAttribute(.paragraphStyle, value: paragraphStyle, range: NSRange(location: 0, length: attrString.length))
-            
+
             // Find and update TextView
             if let textView = view as? MarkdownTextViewTK2 {
                 textView.attributedText = attrString
@@ -817,7 +816,7 @@ public final class MarkdownViewTextKit: UIView {
                   let contentWrapper = containerStack.arrangedSubviews[1] as? UIView,
                   let contentContainer = contentWrapper.subviews.first as? UIStackView
             else { return false }
-            
+
             // 2. 更新 Summary
             // 保持当前的展开状态符号 (基于 wrapper 可见性)
             let isExpanded = !contentWrapper.isHidden
@@ -825,16 +824,16 @@ public final class MarkdownViewTextKit: UIView {
             if oldSummary != newSummary {
                 summaryButton.setTitle(prefix + newSummary, for: .normal)
             }
-            
+
             // 3. 更新 Children (Diff & Patch)
             // 计算内容宽度 (Details padding: 12+12 = 24)
             let contentWidth = max(0, containerWidth - 24)
-            
+
             var newSubviews: [UIView] = []
             var consumedOldIndices = Set<Int>()
             var searchStart = 0
             let existingSubviews = contentContainer.arrangedSubviews
-            
+
             for (childIndex, newChild) in newChildren.enumerated() {
                 var foundIndex = -1
                 let searchEnd = min(searchStart + 5, oldChildren.count)
@@ -863,7 +862,7 @@ public final class MarkdownViewTextKit: UIView {
                     newSubviews.append(newView)
                 }
             }
-            
+
             // Reconcile Subviews
             for (index, subview) in newSubviews.enumerated() {
                 if index < contentContainer.arrangedSubviews.count {
@@ -875,18 +874,18 @@ public final class MarkdownViewTextKit: UIView {
                     contentContainer.addArrangedSubview(subview)
                 }
             }
-            
+
             while contentContainer.arrangedSubviews.count > newSubviews.count {
                 contentContainer.arrangedSubviews.last?.removeFromSuperview()
             }
-            
+
             // 如果当前是展开状态，强制子视图重新布局
             if isExpanded {
-                 for subview in contentContainer.arrangedSubviews {
-                     recursivelyUpdateLayout(for: subview, width: contentWidth)
-                 }
+                for subview in contentContainer.arrangedSubviews {
+                    recursivelyUpdateLayout(for: subview, width: contentWidth)
+                }
             }
-            
+
             return true
 
         case (.image(let oldSrc, _), .image(let newSrc, _)):
@@ -897,19 +896,19 @@ public final class MarkdownViewTextKit: UIView {
                 }
             }
             return true
-            
+
         case (.latex(let oldLatex), .latex(let newLatex)):
-             // ⚡️ 性能优化：如果 LaTeX 内容没有变化，直接复用，避免 TextKit2 重新创建 ViewProvider
-             if oldLatex == newLatex {
-                 return true
-             }
-             // 如果内容变了（流式更新中比较少见，除非公式本身在变），目前没有原地更新逻辑，返回 false 触发重建
-             return false
-            
+            // ⚡️ 性能优化：如果 LaTeX 内容没有变化，直接复用，避免 TextKit2 重新创建 ViewProvider
+            if oldLatex == newLatex {
+                return true
+            }
+            // 如果内容变了（流式更新中比较少见，除非公式本身在变），目前没有原地更新逻辑，返回 false 触发重建
+            return false
+
         case (.thematicBreak, .thematicBreak):
             return true
 
-        // ⚡️ List 子元素复用优化（支持流式增量更新）
+            // ⚡️ List 子元素复用优化（支持流式增量更新）
         case (.list(let oldItems, let oldLevel), .list(let newItems, let newLevel)):
             // 在可复用 Cell 场景下，列表原地更新容易残留旧布局状态，优先保证稳定性
             if isEmbeddedInReusableCell() {
@@ -1148,7 +1147,7 @@ public final class MarkdownViewTextKit: UIView {
 
         return false
     }
-    
+
     private func scheduleRerender() {
         // ⭐️ 如果暂停显示，跳过渲染
         guard !isPausedForDisplay else { return }
@@ -1241,13 +1240,13 @@ public final class MarkdownViewTextKit: UIView {
                 print("  ├─ Element[\(i)]: \(elementTypeString(element))")
                 let view = createView(for: element, containerWidth: containerWidth)
                 view.tag = 1000 + i
-                
+
                 // 3. ⭐️ 核心修改：如果是打字机模式，接管显示逻辑
                 if enableTypewriterEffect {
                     // 🆕 先隐藏视图（不占高度），等待打字机队列来开启
                     view.isHidden = true
                     contentStackView.addArrangedSubview(view)
-                    
+
                     // 将视图加入打字机队列 (enqueue 内部会将文字设透明 / Block设不可见)
                     // enqueue 会自动添加一个 .show 任务来 unhide
                     typewriterEngine.enqueue(view: view)
@@ -1291,13 +1290,13 @@ public final class MarkdownViewTextKit: UIView {
                     let element = streamParsedElements[i]
                     let view = createView(for: element, containerWidth: containerWidth)
                     view.tag = 1000 + i
-                    
+
                     if enableTypewriterEffect {
                         view.isHidden = true
                         contentStackView.addArrangedSubview(view)
                         typewriterEngine.enqueue(view: view)
                     } else {
-                         contentStackView.addArrangedSubview(view)
+                        contentStackView.addArrangedSubview(view)
                     }
 
                     if case .heading(let id, _) = element {
@@ -1309,7 +1308,7 @@ public final class MarkdownViewTextKit: UIView {
                 streamDisplayedCount = streamParsedElements.count
                 oldElements = streamParsedElements
                 hasChanges = true
-                
+
                 if enableTypewriterEffect {
                     typewriterEngine.start()
                 }
@@ -1327,7 +1326,6 @@ public final class MarkdownViewTextKit: UIView {
             notifyHeightChange()
         }
     }
-
 
     // MARK: - 增量解析优化
 
@@ -1440,8 +1438,8 @@ public final class MarkdownViewTextKit: UIView {
 
         // 2️⃣ 只追加真正新增的元素（跳过上下文重叠部分）
         let trueNewElements = incrementalElements.count > contextOverlapEstimate
-            ? Array(incrementalElements.dropFirst(contextOverlapEstimate))
-            : []
+        ? Array(incrementalElements.dropFirst(contextOverlapEstimate))
+        : []
 
         print("⚡️ [Incremental] Parsed \(incrementalElements.count) elements, skipping \(contextOverlapEstimate) overlap, adding \(trueNewElements.count) new")
 
@@ -1591,7 +1589,7 @@ public final class MarkdownViewTextKit: UIView {
             }
         }
     }
-    
+
     private func updateViews(
         newElements: [MarkdownRenderElement],
         footnotes: [MarkdownFootnote],
@@ -1930,7 +1928,7 @@ public final class MarkdownViewTextKit: UIView {
         var newSubviews: [UIView] = []
         var consumedOldIndices = Set<Int>()
         var searchStart = 0
-        
+
         // --- 1. 智能 Diff & Patch ---
         for (newIndex, newElement) in newElements.enumerated() {
             var foundIndex = -1
@@ -1947,7 +1945,7 @@ public final class MarkdownViewTextKit: UIView {
             let searchEnd = min(searchStart + 5, oldElements.count)
 
             if isNested {
-               // print("🔍 [Diff] Searching for nested element at newIndex=\(newIndex), searchStart=\(searchStart), searchEnd=\(searchEnd)")
+                // print("🔍 [Diff] Searching for nested element at newIndex=\(newIndex), searchStart=\(searchStart), searchEnd=\(searchEnd)")
             }
 
             for i in searchStart..<searchEnd {
@@ -1958,7 +1956,7 @@ public final class MarkdownViewTextKit: UIView {
                 // 1. 检查类型是否兼容
                 if canReuseElement(old: oldElement, new: newElement) {
                     if isNested {
-                       // print("  → Found reusable element at oldIndex=\(i), attempting updateViewInPlace...")
+                        // print("  → Found reusable element at oldIndex=\(i), attempting updateViewInPlace...")
                     }
 
                     // 2. 尝试执行更新 (如果 LaTeX 模式改变，这里会返回 false)
@@ -1966,23 +1964,23 @@ public final class MarkdownViewTextKit: UIView {
                     let updateStart = CFAbsoluteTimeGetCurrent()
                     if let candidateView = contentStackView.arrangedSubviews[safe: i],
                        updateViewInPlace(candidateView, old: oldElement, new: newElement, containerWidth: containerWidth) {
-                        
+
                         recordCost(for: "Update \(elementTypeString(newElement))", duration: CFAbsoluteTimeGetCurrent() - updateStart)
-                        
+
                         foundIndex = i
                         if isNested {
-                           // print("  ✅ updateViewInPlace succeeded, reusing view at index \(i)")
+                            // print("  ✅ updateViewInPlace succeeded, reusing view at index \(i)")
                         }
                         break
                     } else {
                         // Update failed, count cost anyway
-                         recordCost(for: "UpdateFail \(elementTypeString(newElement))", duration: CFAbsoluteTimeGetCurrent() - updateStart)
+                        recordCost(for: "UpdateFail \(elementTypeString(newElement))", duration: CFAbsoluteTimeGetCurrent() - updateStart)
                         if isNested {
-                           // print("  ❌ updateViewInPlace failed or view not found")
+                            // print("  ❌ updateViewInPlace failed or view not found")
                         }
                     }
                 } else if isNested {
-                   // print("  → oldElement at \(i) cannot be reused (type mismatch)")
+                    // print("  → oldElement at \(i) cannot be reused (type mismatch)")
                 }
             }
 
@@ -1998,9 +1996,9 @@ public final class MarkdownViewTextKit: UIView {
             } else {
                 // 🆕 无法复用，创建新视图
                 if isNested {
-                   // print("  ⚠️ No reusable view found, creating NEW nested view")
+                    // print("  ⚠️ No reusable view found, creating NEW nested view")
                 }
-                
+
                 // ⏱ Measure Creation Time
                 let createStart = CFAbsoluteTimeGetCurrent()
                 let newView = createView(
@@ -2009,9 +2007,9 @@ public final class MarkdownViewTextKit: UIView {
                     precalculatedHeight: precalculatedTextHeights?[safe: newIndex] ?? nil
                 )
                 recordCost(for: "Create \(elementTypeString(newElement))", duration: CFAbsoluteTimeGetCurrent() - createStart)
-                
+
                 newSubviews.append(newView)
-                
+
                 // 注册目录
                 if case .heading(let id, _) = newElement {
                     headingViews[id] = newView
@@ -2021,16 +2019,16 @@ public final class MarkdownViewTextKit: UIView {
                 }
             }
         }
-        
+
         // --- 2. 协调 StackView (Reconcile) ---
         // 此时 newSubviews 包含了正确的视图顺序（复用的 + 新建的）
         // 我们需要把 contentStackView 调整成 newSubviews 的样子
-        
+
         let reconcileStart = CFAbsoluteTimeGetCurrent()
         for (index, view) in newSubviews.enumerated() {
             if index < contentStackView.arrangedSubviews.count {
                 let currentView = contentStackView.arrangedSubviews[index]
-                
+
                 if currentView != view {
                     // 视图位置不对，插入正确视图（UIStackView 会自动移动已存在的视图）
                     contentStackView.insertArrangedSubview(view, at: index)
@@ -2041,13 +2039,13 @@ public final class MarkdownViewTextKit: UIView {
                 contentStackView.addArrangedSubview(view)
             }
         }
-        
+
         // --- 3. 清理多余视图 ---
         while contentStackView.arrangedSubviews.count > newSubviews.count {
             contentStackView.arrangedSubviews.last?.removeFromSuperview()
         }
         recordCost(for: "StackReconcile", duration: CFAbsoluteTimeGetCurrent() - reconcileStart)
-        
+
         // --- 4. 脚注处理 ---
         // ⚡️ 流式渲染时跳过脚注，等流式完成后再渲染
         if !isStreaming {
@@ -2135,13 +2133,13 @@ public final class MarkdownViewTextKit: UIView {
             // ⚠️ 注意：首屏不调用 notifyHeightChange()，等占位视图添加后再通知
         }
 
-//        let endTime = CFAbsoluteTimeGetCurrent()
-//        let totalDuration = endTime - startTime
-//
-//        // Only print if it took noticeable time (e.g. > 10ms)
-//        if totalDuration > 0.01 && !isBatchFirstScreen {
-//             printRenderCosts(totalDuration: totalDuration)
-//        }
+        //        let endTime = CFAbsoluteTimeGetCurrent()
+        //        let totalDuration = endTime - startTime
+        //
+        //        // Only print if it took noticeable time (e.g. > 10ms)
+        //        if totalDuration > 0.01 && !isBatchFirstScreen {
+        //             printRenderCosts(totalDuration: totalDuration)
+        //        }
     }
 
     // MARK: - ⚠️ 视图复用优化（已禁用）
@@ -2250,10 +2248,10 @@ public final class MarkdownViewTextKit: UIView {
                     self?.handleLinkTap(url)
                 }
             )
-            
+
             let paragraphStyle = NSMutableParagraphStyle()
             paragraphStyle.alignment = .left
-            
+
             let attrString = NSMutableAttributedString(attachment: attachment)
             attrString.addAttribute(.paragraphStyle, value: paragraphStyle, range: NSRange(location: 0, length: attrString.length))
 
@@ -2487,11 +2485,11 @@ public final class MarkdownViewTextKit: UIView {
             container.trailingAnchor.constraint(equalTo: indentWrapper.trailingAnchor),
             // ⭐️ 关键：左边设置缩进
             leadingConstraint,
-            
+
             // 宽度约束，确保 wrap content
             widthConstraint
         ])
-        
+
         return indentWrapper
     }
 
@@ -2569,11 +2567,11 @@ public final class MarkdownViewTextKit: UIView {
     }
 
     private var isListLayoutDebugEnabled: Bool {
-        #if DEBUG
+#if DEBUG
         return ProcessInfo.processInfo.environment["MD_DEBUG_LIST_LAYOUT"] == "1"
-        #else
+#else
         return false
-        #endif
+#endif
     }
 
     private func applyListDebugStyleIfNeeded(to view: UIView, color: UIColor) {
@@ -2641,7 +2639,7 @@ public final class MarkdownViewTextKit: UIView {
         textLayoutManager.enumerateTextLayoutFragments(from: textLayoutManager.documentRange.location, options: [.ensuresLayout]) { layoutFragment in
             // 遍历 layoutFragment 中的 textAttachment
             layoutFragment.textLineFragments.forEach { lineFragment in
-                lineFragment.attributedString.enumerateAttribute(.attachment, in: NSRange(location: 0, length: lineFragment.attributedString.length)) { value, range, stop in
+                lineFragment.attributedString.enumerateAttribute(.attachment, in: NSRange(location: 0, length: lineFragment.attributedString.length)) { value, _, stop in
                     if let attachment = value as? NSTextAttachment {
                         // 尝试获取附件的 ViewProvider
                         if let viewProvider = attachment.viewProvider(for: textView, location: layoutFragment.rangeInElement.location, textContainer: textContainer) {
@@ -2728,12 +2726,12 @@ public final class MarkdownViewTextKit: UIView {
         imageView.isUserInteractionEnabled = true
         imageView.layer.cornerRadius = 8
         container.addSubview(imageView)
-        
+
         // 点击手势
         let tap = UITapGestureRecognizer(target: self, action: #selector(imageViewTapped(_:)))
         imageView.addGestureRecognizer(tap)
         imageView.accessibilityIdentifier = source
-        
+
         // 高度约束 - 提高优先级到 required
         let heightConstraint = imageView.heightAnchor.constraint(equalToConstant: configuration.imagePlaceholderHeight)
         heightConstraint.priority = .required  // 🔧 修复：从 .defaultHigh 改为 .required
@@ -2748,7 +2746,7 @@ public final class MarkdownViewTextKit: UIView {
             imageView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             // ❌ 移除 trailingAnchor，让图片自然宽度，居左显示
             widthConstraint,
-            heightConstraint,
+            heightConstraint
         ])
 
         // 容器尺寸约束
@@ -2763,17 +2761,17 @@ public final class MarkdownViewTextKit: UIView {
 
         NSLayoutConstraint.activate([
             containerHeightConstraint,
-            containerWidthConstraint,
+            containerWidthConstraint
         ])
 
         print("🖼️ [Image] Constraints set - width: ≤\(width), height: \(configuration.imagePlaceholderHeight)")
-        
+
         // 用占位图加载
         let placeholderImage = createPlaceholderImage(
             size: CGSize(width: width, height: configuration.imagePlaceholderHeight),
             text: altText
         )
-        
+
         // 使用你的 ImageView 加载方法
         imageView.image(with: source, placeHolder: placeholderImage) { [weak heightConstraint, weak widthConstraint] image in
             guard let image = image else { return }
@@ -2811,14 +2809,14 @@ public final class MarkdownViewTextKit: UIView {
 
         return container
     }
-    
+
     private func createPlaceholderImage(size: CGSize, text: String) -> UIImage {
         let renderer = UIGraphicsImageRenderer(size: size)
         return renderer.image { _ in
             configuration.imagePlaceholderColor.setFill()
             let rect = CGRect(origin: .zero, size: size)
             UIBezierPath(roundedRect: rect, cornerRadius: 8).fill()
-            
+
             let iconSize: CGFloat = 40
             let iconRect = CGRect(
                 x: (size.width - iconSize) / 2,
@@ -2826,22 +2824,22 @@ public final class MarkdownViewTextKit: UIView {
                 width: iconSize,
                 height: iconSize
             )
-            
+
             let iconConfig = UIImage.SymbolConfiguration(pointSize: 36, weight: .light)
             if let icon = UIImage(systemName: "photo", withConfiguration: iconConfig) {
                 UIColor.secondaryLabel.setFill()
                 icon.draw(in: iconRect)
             }
-            
+
             let paragraphStyle = NSMutableParagraphStyle()
             paragraphStyle.alignment = .center
-            
+
             let attributes: [NSAttributedString.Key: Any] = [
                 .font: UIFont.systemFont(ofSize: 13),
                 .foregroundColor: UIColor.secondaryLabel,
-                .paragraphStyle: paragraphStyle,
+                .paragraphStyle: paragraphStyle
             ]
-            
+
             let displayText = text.isEmpty ? "Loading..." : text
             let textRect = CGRect(x: 16, y: (size.height + iconSize) / 2 - 5, width: size.width - 32, height: 20)
             displayText.draw(in: textRect, withAttributes: attributes)
@@ -2859,26 +2857,26 @@ public final class MarkdownViewTextKit: UIView {
         if !urlString.hasPrefix("http://") && !urlString.hasPrefix("https://") {
             urlString = "https://" + urlString
         }
-        
+
         guard let url = URL(string: urlString) else { return }
-        
+
         ImageLoader.shared.loadImage(from: url)
             .receive(on: DispatchQueue.main)
             .sink { [weak imageView, weak heightConstraint] image in
                 guard let imageView = imageView, let image = image else { return }
-                
+
                 let imageSize = image.size
                 guard imageSize.width > 0 && imageSize.height > 0 else { return }
-                
+
                 let aspectRatio = imageSize.width / imageSize.height
                 var targetWidth = min(imageSize.width, maxWidth)
                 var targetHeight = targetWidth / aspectRatio
-                
+
                 if targetHeight > maxHeight {
                     targetHeight = maxHeight
                     targetWidth = targetHeight * aspectRatio
                 }
-                
+
                 imageView.image = image
                 imageView.backgroundColor = .clear
                 heightConstraint?.constant = targetHeight
@@ -2886,7 +2884,7 @@ public final class MarkdownViewTextKit: UIView {
             }
             .store(in: &cancellables)
     }
-    
+
     private func createCodeBlockView(with attributedString: NSAttributedString, width: CGFloat, fixedHeight: CGFloat? = nil) -> UIView {
         let container = UIView()
         container.backgroundColor = configuration.codeBackgroundColor
@@ -2909,7 +2907,7 @@ public final class MarkdownViewTextKit: UIView {
 
         // 🔥 核心修复:立即应用布局,计算文本实际可用宽度(减去 padding)
         let codeBlockWidth = max(0, width - 24)  // left 12 + right 12
-        
+
         if let fixedHeight = fixedHeight {
             // ⚡️ 使用预计算高度 (减去上下 padding 24)
             textView.textContainer.size = CGSize(width: codeBlockWidth, height: .greatestFiniteMagnitude)
@@ -2929,111 +2927,111 @@ public final class MarkdownViewTextKit: UIView {
             textView.topAnchor.constraint(equalTo: container.topAnchor, constant: 12),
             textView.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 12),
             textView.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -12),
-            textView.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -12),
+            textView.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -12)
         ])
 
         return container
     }
-    
+
     // MARK: - Text View Creation (修复版)
 
-        private func normalizedAttributedTextForRendering(
-            _ text: NSAttributedString,
-            trimLeadingNewlines: Bool = false,
-            trimTrailingNewlines: Bool = true
-        ) -> NSAttributedString {
-            let mutable = NSMutableAttributedString(attributedString: text)
+    private func normalizedAttributedTextForRendering(
+        _ text: NSAttributedString,
+        trimLeadingNewlines: Bool = false,
+        trimTrailingNewlines: Bool = true
+    ) -> NSAttributedString {
+        let mutable = NSMutableAttributedString(attributedString: text)
 
-            if trimLeadingNewlines {
-                while mutable.length > 0, mutable.string.hasPrefix("\n") {
-                    mutable.deleteCharacters(in: NSRange(location: 0, length: 1))
-                }
+        if trimLeadingNewlines {
+            while mutable.length > 0, mutable.string.hasPrefix("\n") {
+                mutable.deleteCharacters(in: NSRange(location: 0, length: 1))
             }
-
-            if trimTrailingNewlines {
-                while mutable.length > 0, mutable.string.hasSuffix("\n") {
-                    mutable.deleteCharacters(in: NSRange(location: mutable.length - 1, length: 1))
-                }
-            }
-            return mutable
         }
-        
-        private func createTextView(
-            with attributedString: NSAttributedString,
-            width: CGFloat,
-            insets: UIEdgeInsets = .zero,
-            fixedHeight: CGFloat? = nil
-        ) -> UIView {
-            let normalizedText = normalizedAttributedTextForRendering(attributedString)
 
-            let container = UIView()
-            container.translatesAutoresizingMaskIntoConstraints = false
-            
-            let textView = MarkdownTextViewTK2()
-            textView.attributedText = normalizedText
-            textView.typewriterTextMode = configuration.typewriterTextMode
-            textView.typewriterHeightUpdateInterval = configuration.typewriterHeightUpdateInterval
-            textView.linkTextAttributes = [
-                .foregroundColor: configuration.linkColor,
-                .underlineStyle: configuration.linkUnderlineEnabled
-                    ? NSUnderlineStyle.single.rawValue : 0,
-            ]
-            textView.onLinkTap = { [weak self] url in
-                self?.handleLinkTap(url)
+        if trimTrailingNewlines {
+            while mutable.length > 0, mutable.string.hasSuffix("\n") {
+                mutable.deleteCharacters(in: NSRange(location: mutable.length - 1, length: 1))
             }
-            textView.onImageTap = { [weak self] urlString in
-                self?.onImageTap?(urlString)
-            }
-            textView.translatesAutoresizingMaskIntoConstraints = false
-            
-            // 🔥 核心修复：立即应用布局
-            // 计算文本实际可用的宽度（减去内边距）
-            let contentWidth = width - insets.left - insets.right
-            if contentWidth > 0 {
-                let useAppendTypewriter = enableTypewriterEffect && configuration.typewriterTextMode == .append
-                if useAppendTypewriter {
-                    textView.textContainer.size = CGSize(width: contentWidth, height: .greatestFiniteMagnitude)
-                    textView.setFixedHeight(1)
-                } else if let fixedHeight = fixedHeight {
-                    // ⚡️ 使用预计算高度，跳过主线程布局计算
-                    textView.textContainer.size = CGSize(width: contentWidth, height: .greatestFiniteMagnitude)
-                    textView.setFixedHeight(fixedHeight)
-                } else {
-                    textView.applyLayout(width: contentWidth, force: true)
-                }
-            }
-            
-            container.addSubview(textView)
-            
-            NSLayoutConstraint.activate([
-                textView.topAnchor.constraint(equalTo: container.topAnchor, constant: insets.top),
-                textView.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: insets.left),
-                textView.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -insets.right),
-                textView.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -insets.bottom),
-            ])
-            
-            // 保持垂直方向的抗压缩优先级，防止被压缩
-            container.setContentHuggingPriority(.required, for: .vertical)
-            container.setContentCompressionResistancePriority(.required, for: .vertical)
-            
-            return container
         }
-    
+        return mutable
+    }
+
+    private func createTextView(
+        with attributedString: NSAttributedString,
+        width: CGFloat,
+        insets: UIEdgeInsets = .zero,
+        fixedHeight: CGFloat? = nil
+    ) -> UIView {
+        let normalizedText = normalizedAttributedTextForRendering(attributedString)
+
+        let container = UIView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+
+        let textView = MarkdownTextViewTK2()
+        textView.attributedText = normalizedText
+        textView.typewriterTextMode = configuration.typewriterTextMode
+        textView.typewriterHeightUpdateInterval = configuration.typewriterHeightUpdateInterval
+        textView.linkTextAttributes = [
+            .foregroundColor: configuration.linkColor,
+            .underlineStyle: configuration.linkUnderlineEnabled
+            ? NSUnderlineStyle.single.rawValue : 0
+        ]
+        textView.onLinkTap = { [weak self] url in
+            self?.handleLinkTap(url)
+        }
+        textView.onImageTap = { [weak self] urlString in
+            self?.onImageTap?(urlString)
+        }
+        textView.translatesAutoresizingMaskIntoConstraints = false
+
+        // 🔥 核心修复：立即应用布局
+        // 计算文本实际可用的宽度（减去内边距）
+        let contentWidth = width - insets.left - insets.right
+        if contentWidth > 0 {
+            let useAppendTypewriter = enableTypewriterEffect && configuration.typewriterTextMode == .append
+            if useAppendTypewriter {
+                textView.textContainer.size = CGSize(width: contentWidth, height: .greatestFiniteMagnitude)
+                textView.setFixedHeight(1)
+            } else if let fixedHeight = fixedHeight {
+                // ⚡️ 使用预计算高度，跳过主线程布局计算
+                textView.textContainer.size = CGSize(width: contentWidth, height: .greatestFiniteMagnitude)
+                textView.setFixedHeight(fixedHeight)
+            } else {
+                textView.applyLayout(width: contentWidth, force: true)
+            }
+        }
+
+        container.addSubview(textView)
+
+        NSLayoutConstraint.activate([
+            textView.topAnchor.constraint(equalTo: container.topAnchor, constant: insets.top),
+            textView.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: insets.left),
+            textView.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -insets.right),
+            textView.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -insets.bottom)
+        ])
+
+        // 保持垂直方向的抗压缩优先级，防止被压缩
+        container.setContentHuggingPriority(.required, for: .vertical)
+        container.setContentCompressionResistancePriority(.required, for: .vertical)
+
+        return container
+    }
+
     private func handleLinkTap(_ url: URL) {
         // 检查是否是内部锚点链接
         if url.scheme == nil || url.scheme == "markdown" {
             var fragment = url.fragment ?? url.absoluteString.replacingOccurrences(of: "#", with: "")
-            
+
             if let decoded = fragment.removingPercentEncoding {
                 fragment = decoded
             }
-            
+
             if !fragment.isEmpty {
                 if headingViews[fragment] != nil {
                     scrollToTOCItem(MarkdownTOCItem(level: 1, title: "", id: fragment))
                     return
                 }
-                
+
                 if let item = tableOfContents.first(where: {
                     $0.title.contains(fragment) || fragment.contains($0.title)
                 }) {
@@ -3042,12 +3040,12 @@ public final class MarkdownViewTextKit: UIView {
                 }
             }
         }
-        
+
         onLinkTap?(url)
     }
-    
+
     // MARK: - Quote View
-    
+
     /// 创建引用块视图 - 支持嵌套块级元素（表格、代码块、子列表等）
     private func createQuoteView(children: [MarkdownRenderElement], width: CGFloat, level: Int = 1) -> UIView {
         let outerContainer = UIView()
@@ -3103,35 +3101,35 @@ public final class MarkdownViewTextKit: UIView {
             contentStack.leadingAnchor.constraint(equalTo: bar.trailingAnchor, constant: contentPadding),
             contentStack.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -contentPadding / 1.5),
             contentStack.topAnchor.constraint(equalTo: container.topAnchor, constant: configuration.blockquoteContentSpacing),
-            contentStack.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -configuration.blockquoteContentSpacing),
+            contentStack.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -configuration.blockquoteContentSpacing)
         ])
 
         return outerContainer
     }
-    
+
     // MARK: - Thematic Break View
-    
+
     private func createThematicBreakView(width: CGFloat) -> UIView {
         let container = UIView()
         container.translatesAutoresizingMaskIntoConstraints = false
-        
+
         let lineView = UIView()
         lineView.backgroundColor = configuration.horizontalRuleColor
         lineView.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(lineView)
-        
+
         NSLayoutConstraint.activate([
             container.heightAnchor.constraint(equalToConstant: 24),
             container.widthAnchor.constraint(equalToConstant: width),
             lineView.centerYAnchor.constraint(equalTo: container.centerYAnchor),
             lineView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             lineView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            lineView.heightAnchor.constraint(equalToConstant: 1.0 / UIScreen.main.scale),
+            lineView.heightAnchor.constraint(equalToConstant: 1.0 / UIScreen.main.scale)
         ])
-        
+
         return container
     }
-    
+
     // MARK: - Details View
 
     private func createDetailsView(
@@ -3249,7 +3247,7 @@ public final class MarkdownViewTextKit: UIView {
         if latexCount > 0 {
             print("[STREAM] 📦 Details 包含 \(latexCount) 个 LaTeX，LaTeX 总耗时: \(String(format: "%.1f", latexTotalTime * 1000))ms")
         }
-        
+
         summaryButton.addAction(
             UIAction { [weak self, weak contentWrapper, weak contentContainer, weak summaryButton, weak container] _ in
                 guard let self = self,
@@ -3258,14 +3256,14 @@ public final class MarkdownViewTextKit: UIView {
                       let btn = summaryButton,
                       let containerWrapper = container
                 else { return }
-                
+
                 // 🔒 锁定流式更新，防止状态覆盖
                 self.isUserInteractingWithDetails = true
                 // 1秒后自动解锁，防止永久死锁
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                     self.isUserInteractingWithDetails = false
                 }
-                
+
                 let willShow = wrapper.isHidden
 
                 // 更新按钮标题（使用 configuration）
@@ -3342,13 +3340,13 @@ public final class MarkdownViewTextKit: UIView {
                 self.setNeedsLayout()
                 self.layoutIfNeeded()
                 self.invalidateIntrinsicContentSize()
-                
+
                 // 🔥 终极修复：不再依赖 systemLayoutSizeFitting，而是直接计算 StackView 的实际高度
                 // 延迟一小段时间等待布局引擎稳定
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                     // 强制再次刷新布局
                     self.contentStackView.layoutIfNeeded()
-                    
+
                     // 手动计算高度：遍历所有子视图的 frame
                     var totalHeight: CGFloat = 0
                     for subview in self.contentStackView.arrangedSubviews {
@@ -3363,7 +3361,7 @@ public final class MarkdownViewTextKit: UIView {
                     }
                     // 加上 insets (如果有)
                     totalHeight += self.contentStackView.layoutMargins.top + self.contentStackView.layoutMargins.bottom
-                    
+
                     // 强制通知
                     self.lastReportedHeight = totalHeight
                     self.onHeightChange?(totalHeight)
@@ -3394,16 +3392,16 @@ public final class MarkdownViewTextKit: UIView {
 
         return outerContainer
     }
-    
+
     // 递归查找并更新 MarkdownTextViewTK2 布局
     private func recursivelyUpdateLayout(for view: UIView, width: CGFloat) {
         var currentWidth = width
-        
+
         // 1. 如果遇到 StackView 且启用了 margins，减去 margins (处理嵌套 Details)
         if let stackView = view as? UIStackView, stackView.isLayoutMarginsRelativeArrangement {
             currentWidth = max(0, currentWidth - stackView.layoutMargins.left - stackView.layoutMargins.right)
         }
-        
+
         // 2. 如果是 TextKit2 视图，直接应用布局
         if let textView = view as? MarkdownTextViewTK2 {
             // 优先使用实际宽度（更准确，支持多级嵌套），防止 layout 尚未完成时的 0 宽
@@ -3411,7 +3409,7 @@ public final class MarkdownViewTextKit: UIView {
                 textView.applyLayout(width: textView.bounds.width, force: true)
                 return
             }
-            
+
             // Fallback: 使用递归传递下来的 calculated width
             // 需要结合 textView 自身的容器 padding 逻辑
             var availableWidth = currentWidth
@@ -3419,7 +3417,7 @@ public final class MarkdownViewTextKit: UIView {
                 // CodeBlock container
                 if superview.layer.cornerRadius == 8 {
                     availableWidth = max(0, currentWidth - 24)
-                } 
+                }
                 // Quote container
                 else if superview.subviews.contains(where: { $0.backgroundColor == configuration.blockquoteBarColor }) {
                     // 简化的 Quote padding 计算
@@ -3427,11 +3425,11 @@ public final class MarkdownViewTextKit: UIView {
                     availableWidth = max(0, currentWidth - padding)
                 }
             }
-            
+
             textView.applyLayout(width: availableWidth, force: true)
             return
         }
-        
+
         // 3. 递归查找子视图
         for subview in view.subviews {
             recursivelyUpdateLayout(for: subview, width: currentWidth)
@@ -3443,12 +3441,12 @@ public final class MarkdownViewTextKit: UIView {
         if let textView = view as? MarkdownTextViewTK2 {
             textView.setNeedsDisplay()
         }
-        
+
         for subview in view.subviews {
             forceRedrawVisibleTextViews(in: subview)
         }
     }
-    
+
     // MARK: - Table View
 
     private func createTableView(with tableData: MarkdownTableData, containerWidth: CGFloat) -> UIView {
@@ -3528,7 +3526,7 @@ public final class MarkdownViewTextKit: UIView {
             tableStackView.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
             tableStackView.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
             tableStackView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
-            tableStackView.widthAnchor.constraint(equalToConstant: totalWidth),
+            tableStackView.widthAnchor.constraint(equalToConstant: totalWidth)
         ])
 
         let rowHeight = configuration.tableRowHeight
@@ -3537,7 +3535,7 @@ public final class MarkdownViewTextKit: UIView {
 
         return container
     }
-    
+
     private func createTableRow(
         cells: [NSAttributedString],
         columnWidths: [CGFloat],
@@ -3548,59 +3546,59 @@ public final class MarkdownViewTextKit: UIView {
         rowStack.spacing = 0
         rowStack.distribution = .fill
         rowStack.translatesAutoresizingMaskIntoConstraints = false
-        
+
         if isHeader {
             rowStack.backgroundColor = configuration.tableHeaderBackgroundColor
         }
-        
+
         for (index, cell) in cells.enumerated() {
             let cellView = UIView()
             cellView.translatesAutoresizingMaskIntoConstraints = false
-            
+
             let label = UILabel()
             label.attributedText = cell
             label.numberOfLines = 0
             label.textAlignment = .center
             label.translatesAutoresizingMaskIntoConstraints = false
-            
+
             if isHeader {
                 label.font = UIFont.systemFont(ofSize: configuration.bodyFont.pointSize, weight: .semibold)
             }
-            
+
             cellView.addSubview(label)
-            
+
             if index < cells.count - 1 {
                 let border = UIView()
                 border.backgroundColor = configuration.tableBorderColor.withAlphaComponent(0.3)
                 border.translatesAutoresizingMaskIntoConstraints = false
                 cellView.addSubview(border)
-                
+
                 NSLayoutConstraint.activate([
                     border.topAnchor.constraint(equalTo: cellView.topAnchor, constant: 8),
                     border.bottomAnchor.constraint(equalTo: cellView.bottomAnchor, constant: -8),
                     border.trailingAnchor.constraint(equalTo: cellView.trailingAnchor),
-                    border.widthAnchor.constraint(equalToConstant: 0.5),
+                    border.widthAnchor.constraint(equalToConstant: 0.5)
                 ])
             }
-            
+
             NSLayoutConstraint.activate([
                 label.topAnchor.constraint(equalTo: cellView.topAnchor, constant: 10),
                 label.bottomAnchor.constraint(equalTo: cellView.bottomAnchor, constant: -10),
                 label.leadingAnchor.constraint(equalTo: cellView.leadingAnchor, constant: 12),
-                label.trailingAnchor.constraint(equalTo: cellView.trailingAnchor, constant: -12),
+                label.trailingAnchor.constraint(equalTo: cellView.trailingAnchor, constant: -12)
             ])
-            
+
             let width = index < columnWidths.count ? columnWidths[index] : 80
             cellView.widthAnchor.constraint(equalToConstant: width).isActive = true
-            
+
             rowStack.addArrangedSubview(cellView)
         }
-        
+
         rowStack.heightAnchor.constraint(equalToConstant: 44).isActive = true
-        
+
         return rowStack
     }
-    
+
     // MARK: - Footnote View
 
     private func createFootnoteView(footnotes: [MarkdownFootnote], width: CGFloat) -> UIView {
@@ -3613,38 +3611,38 @@ public final class MarkdownViewTextKit: UIView {
         container.translatesAutoresizingMaskIntoConstraints = false
         // ⭐️ 标记为原子块，让打字机引擎将其视为整体淡入，而不是逐字打印
         container.accessibilityIdentifier = "FootnoteContainer"
-        
+
         let stackView = UIStackView()
         stackView.axis = .vertical
         stackView.spacing = 8
         stackView.alignment = .leading // 使用 .leading 允许分隔线宽度自定义
         stackView.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(stackView)
-        
+
         // 1. 分隔线
         let separator = UIView()
         separator.backgroundColor = configuration.horizontalRuleColor
         separator.translatesAutoresizingMaskIntoConstraints = false
         stackView.addArrangedSubview(separator)
-        
+
         NSLayoutConstraint.activate([
             separator.heightAnchor.constraint(equalToConstant: 1.0 / UIScreen.main.scale),
             separator.widthAnchor.constraint(equalToConstant: width * 0.3)
         ])
-        
+
         // 2. 合并所有脚注到一个 AttributedString (性能优化：O(N) Views -> O(1) View)
         let allFootnotesText = NSMutableAttributedString()
-        
+
         let paragraphStyle = NSMutableParagraphStyle()
         paragraphStyle.paragraphSpacing = 6 // 脚注之间的间距
         paragraphStyle.lineHeightMultiple = 1.1
-        
+
         for (index, footnote) in footnotes.enumerated() {
             // 添加换行 (除第一个外)
             if index > 0 {
                 allFootnotesText.append(NSAttributedString(string: "\n"))
             }
-            
+
             // ID: ⁽1⁾
             let idText = NSAttributedString(
                 string: "⁽\(footnote.id)⁾ ",
@@ -3655,7 +3653,7 @@ public final class MarkdownViewTextKit: UIView {
                     .paragraphStyle: paragraphStyle
                 ])
             allFootnotesText.append(idText)
-            
+
             // Content
             let contentText = NSAttributedString(
                 string: footnote.content,
@@ -3666,7 +3664,7 @@ public final class MarkdownViewTextKit: UIView {
                 ])
             allFootnotesText.append(contentText)
         }
-        
+
         // 3. 创建唯一的 TextView
         // 注意：我们显式传递 width 确保 createTextView 内部正确计算布局
         let textView = createTextView(
@@ -3674,39 +3672,39 @@ public final class MarkdownViewTextKit: UIView {
             width: width,
             insets: UIEdgeInsets(top: 8, left: 0, bottom: 16, right: 0)
         )
-        
+
         // 确保 TextView 占满全宽 (因为 StackView 是 .leading 对齐)
         textView.translatesAutoresizingMaskIntoConstraints = false
         textView.widthAnchor.constraint(equalToConstant: width).isActive = true
-        
+
         stackView.addArrangedSubview(textView)
-        
+
         NSLayoutConstraint.activate([
             stackView.topAnchor.constraint(equalTo: container.topAnchor, constant: 16),
             stackView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             stackView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            stackView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            stackView.bottomAnchor.constraint(equalTo: container.bottomAnchor)
         ])
-        
+
         return container
     }
-    
+
     // MARK: - Footnote Preprocessing
-    
+
     private func preprocessFootnotes(_ text: String) -> (String, [MarkdownFootnote]) {
         // Optimization: Fast check for footnote syntax markers.
         // If neither definition marker nor reference marker exists, skip regex entirely.
         if !text.contains("[^") {
             return (text, [])
         }
-        
+
         var processedText = text
         var footnotes: [MarkdownFootnote] = []
-        
+
         let definitionPattern = #"\[\^([^\]]+)\]:\s*(.+)$"#
         if let regex = try? NSRegularExpression(pattern: definitionPattern, options: .anchorsMatchLines) {
             let matches = regex.matches(in: text, range: NSRange(text.startIndex..., in: text))
-            
+
             for match in matches.reversed() {
                 if let idRange = Range(match.range(at: 1), in: text),
                    let contentRange = Range(match.range(at: 2), in: text),
@@ -3718,11 +3716,11 @@ public final class MarkdownViewTextKit: UIView {
                 }
             }
         }
-        
+
         let referencePattern = #"\[\^([^\]]+)\]"#
         if let regex = try? NSRegularExpression(pattern: referencePattern, options: []) {
             let matches = regex.matches(in: processedText, range: NSRange(processedText.startIndex..., in: processedText))
-            
+
             for match in matches.reversed() {
                 if let idRange = Range(match.range(at: 1), in: processedText),
                    let fullRange = Range(match.range, in: processedText) {
@@ -3732,63 +3730,63 @@ public final class MarkdownViewTextKit: UIView {
                 }
             }
         }
-        
+
         return (processedText, footnotes)
     }
-    
+
     // MARK: - Image Loading
-    
+
     private func loadImages() {
         for (attachment, urlString) in imageAttachments {
             loadImage(urlString: urlString, into: attachment)
         }
     }
-    
+
     private func loadImage(urlString: String, into attachment: MarkdownImageAttachment) {
         var processedURLString = urlString
         if !urlString.hasPrefix("http://") && !urlString.hasPrefix("https://") {
             processedURLString = "https://" + urlString
         }
-        
+
         guard let url = URL(string: processedURLString) else { return }
-        
+
         ImageLoader.shared.loadImage(from: url)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] image in
                 guard let self = self, let image = image else { return }
-                
+
                 let imageSize = image.size
                 var targetSize = CGSize(width: 100, height: 100)
-                
+
                 if imageSize.width > 0 && imageSize.height > 0 {
                     let aspectRatio = ceilf(Float(imageSize.width / imageSize.height))
                     var targetWidth = imageSize.width
                     var targetHeight = imageSize.height
-                    
+
                     // 按宽度缩放
                     if attachment.maxWidth > 0 && targetWidth > attachment.maxWidth {
                         targetWidth = attachment.maxWidth
                         targetHeight = targetWidth / CGFloat(aspectRatio)
                     }
-                    
+
                     // 按高度缩放
                     if attachment.maxHeight > 0 && targetHeight > attachment.maxHeight {
                         targetHeight = attachment.maxHeight
                         targetWidth = targetHeight * CGFloat(aspectRatio)
                     }
-                    
+
                     targetSize = CGSize(width: ceil(targetWidth), height: ceil(targetHeight))
                 }
-                
+
                 // 直接生成缩放后的图片
                 let renderer = UIGraphicsImageRenderer(size: targetSize)
                 let scaledImage = renderer.image { _ in
                     image.draw(in: CGRect(origin: .zero, size: targetSize))
                 }
-                
+
                 attachment.bounds = CGRect(origin: .zero, size: targetSize)
                 attachment.image = scaledImage
-                
+
                 self.refreshWorkItem?.cancel()
                 let workItem = DispatchWorkItem { [weak self] in
                     self?.refreshTextViews()
@@ -3798,7 +3796,7 @@ public final class MarkdownViewTextKit: UIView {
             }
             .store(in: &cancellables)
     }
-    
+
     private func refreshTextViews() {
         for container in contentStackView.arrangedSubviews {
             for childView in container.subviews {
@@ -3807,14 +3805,14 @@ public final class MarkdownViewTextKit: UIView {
                 }
             }
         }
-        
+
         invalidateIntrinsicContentSize()
         notifyHeightChange()
     }
-    
+
     // 记录上次报告的高度，用于防抖和避免死循环
     private var lastReportedHeight: CGFloat = 0
-    
+
     private func measuredVisibleContentStackHeight() -> CGFloat {
         let visibleSubviews = contentStackView.arrangedSubviews.filter { !$0.isHidden }
         var totalHeight: CGFloat = visibleSubviews.reduce(0) { $0 + $1.frame.height }
@@ -3885,7 +3883,7 @@ public final class MarkdownViewTextKit: UIView {
             print("📏 [Height] ⚠️ Skipped notification (diff < 9.0pt)")
         }
     }
-    
+
     public override var intrinsicContentSize: CGSize {
         let size = contentStackView.systemLayoutSizeFitting(
             CGSize(
@@ -3896,49 +3894,49 @@ public final class MarkdownViewTextKit: UIView {
         )
         return CGSize(width: UIView.noIntrinsicMetric, height: size.height)
     }
-    
+
     public override func layoutSubviews() {
         super.layoutSubviews()
-        
+
         // ⭐️ 关键修复：在布局完成后检查高度是否需要修正
         // 这解决了"初始宽度不准导致高度计算错误"的问题（Chicken & Egg problem）
         // 通过对比 lastReportedHeight，我们只在真正需要时触发更新，从而避免死循环
         notifyHeightChange()
     }
-    
-    //MARK: - streaming method
+
+    // MARK: - streaming method
     /// 计算需要原子化输出的区间（公式、图片、链接）
-        private func calculateAtomicRanges(in text: String) -> [NSRange] {
-            var ranges: [NSRange] = []
-            let nsString = text as NSString
+    private func calculateAtomicRanges(in text: String) -> [NSRange] {
+        var ranges: [NSRange] = []
+        let nsString = text as NSString
 
-            // 定义正则表达式模式
-            // 1. 块级公式 $$...$$ (允许换行 (?s))
-            let blockMathPattern = "(?s)\\$\\$.*?\\$\\$"
-            // 2. 行内公式 $...$ (不允许换行)
-            let inlineMathPattern = "\\$[^\\n\\$]+?\\$"
-            // 3. 图片 ![alt](url)
-            let imagePattern = "!\\[.*?\\]\\(.*?\\)"
-            // 4. 链接 [text](url) - 如果你也希望链接整体出现，加上这个
-            let linkPattern = "\\[.*?\\]\\(.*?\\)"
+        // 定义正则表达式模式
+        // 1. 块级公式 $$...$$ (允许换行 (?s))
+        let blockMathPattern = "(?s)\\$\\$.*?\\$\\$"
+        // 2. 行内公式 $...$ (不允许换行)
+        let inlineMathPattern = "\\$[^\\n\\$]+?\\$"
+        // 3. 图片 ![alt](url)
+        let imagePattern = "!\\[.*?\\]\\(.*?\\)"
+        // 4. 链接 [text](url) - 如果你也希望链接整体出现，加上这个
+        let linkPattern = "\\[.*?\\]\\(.*?\\)"
 
-            // 合并正则 (注意顺序，块级优先于行内)
-            // 这里为了演示，把链接也加上去了，你可以根据需要注释掉 linkPattern
-            let patterns = [blockMathPattern, inlineMathPattern, imagePattern,linkPattern]
+        // 合并正则 (注意顺序，块级优先于行内)
+        // 这里为了演示，把链接也加上去了，你可以根据需要注释掉 linkPattern
+        let patterns = [blockMathPattern, inlineMathPattern, imagePattern, linkPattern]
 
-            for pattern in patterns {
-                if let regex = try? NSRegularExpression(pattern: pattern, options: []) {
-                    let matches = regex.matches(in: text, options: [], range: NSRange(location: 0, length: nsString.length))
-                    for match in matches {
-                        ranges.append(match.range)
-                    }
+        for pattern in patterns {
+            if let regex = try? NSRegularExpression(pattern: pattern, options: []) {
+                let matches = regex.matches(in: text, options: [], range: NSRange(location: 0, length: nsString.length))
+                for match in matches {
+                    ranges.append(match.range)
                 }
             }
-
-            // 排序并合并重叠区间（虽然正则通常分开写，但为了保险）
-            ranges.sort { $0.location < $1.location }
-            return ranges
         }
+
+        // 排序并合并重叠区间（虽然正则通常分开写，但为了保险）
+        ranges.sort { $0.location < $1.location }
+        return ranges
+    }
 
     // MARK: - 假流式增量解析状态
     private var fakeStreamLastSafePosition: Int = 0
@@ -3953,633 +3951,633 @@ public final class MarkdownViewTextKit: UIView {
     // 增加 onStart 参数：通知外部"分词完成，马上开始喷字"
     // 方法签名中增加 onStart 和 onComplete
     public func startStreaming(
-            _ text: String,
-            unit: StreamingUnit = .word,
-            unitsPerChunk: Int = 1,
-            interval: TimeInterval = 0.05,
-            autoScrollBottom: Bool = false,
-            onStart: (() -> Void)? = nil,
-            onComplete: (() -> Void)? = nil
-        ) {
-            autoScrollEnabled = autoScrollBottom
-            stopStreaming()
-            isStreaming = true
-            self.onStreamComplete = onComplete
+        _ text: String,
+        unit: StreamingUnit = .word,
+        unitsPerChunk: Int = 1,
+        interval: TimeInterval = 0.05,
+        autoScrollBottom: Bool = false,
+        onStart: (() -> Void)? = nil,
+        onComplete: (() -> Void)? = nil
+    ) {
+        autoScrollEnabled = autoScrollBottom
+        stopStreaming()
+        isStreaming = true
+        self.onStreamComplete = onComplete
 
-            // ⚡️ 初始化流式显示状态
-            streamPreParseCompleted = false
-            streamDisplayedCount = 0
-            streamParsedElements = []
-            streamTotalTextLength = text.count
-            fakeStreamLastSafePosition = 0
-            fakeStreamUseIncrementalParse = true
-            fakeStreamLastParseTime = 0
-            fakeStreamParseScheduled = false
-            fakeStreamChunks = []
-            fakeStreamChunkIndex = 0
-            fakeStreamParsedText = ""
+        // ⚡️ 初始化流式显示状态
+        streamPreParseCompleted = false
+        streamDisplayedCount = 0
+        streamParsedElements = []
+        streamTotalTextLength = text.count
+        fakeStreamLastSafePosition = 0
+        fakeStreamUseIncrementalParse = true
+        fakeStreamLastParseTime = 0
+        fakeStreamParseScheduled = false
+        fakeStreamChunks = []
+        fakeStreamChunkIndex = 0
+        fakeStreamParsedText = ""
 
-            let streamStartTime = CFAbsoluteTimeGetCurrent()
-            self.streamingStartTimestamp = streamStartTime  // ⭐️ 保存流式开始时间
-            self.firstLatexShown = false  // ⭐️ 重置首个公式标记
+        let streamStartTime = CFAbsoluteTimeGetCurrent()
+        self.streamingStartTimestamp = streamStartTime  // ⭐️ 保存流式开始时间
+        self.firstLatexShown = false  // ⭐️ 重置首个公式标记
 
-            // 准备震动反馈
-            prepareHapticFeedback()
+        // 准备震动反馈
+        prepareHapticFeedback()
 
-            print("[STREAM] ========== START ==========")
-            print("[STREAM] 开始流式，文本长度: \(text.count) 字符")
+        print("[STREAM] ========== START ==========")
+        print("[STREAM] 开始流式，文本长度: \(text.count) 字符")
 
-            // ⭐️ 新方案：后台预解析整个文本 + 分段显示
-            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-                guard let self = self else { return }
+        // ⭐️ 新方案：后台预解析整个文本 + 分段显示
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else { return }
 
-                let parseStartTime = CFAbsoluteTimeGetCurrent()
-                print("[STREAM] 后台解析开始...")
+            let parseStartTime = CFAbsoluteTimeGetCurrent()
+            print("[STREAM] 后台解析开始...")
 
-                // 1. 预处理脚注
-                let (processedMarkdown, footnotes) = self.preprocessFootnotes(text)
-                let footnoteTime = CFAbsoluteTimeGetCurrent() - parseStartTime
-                print("[STREAM] 脚注预处理完成: \(String(format: "%.1f", footnoteTime * 1000))ms")
+            // 1. 预处理脚注
+            let (processedMarkdown, footnotes) = self.preprocessFootnotes(text)
+            let footnoteTime = CFAbsoluteTimeGetCurrent() - parseStartTime
+            print("[STREAM] 脚注预处理完成: \(String(format: "%.1f", footnoteTime * 1000))ms")
 
-                // 2. 一次性解析整个文本
-                let markdownParseStart = CFAbsoluteTimeGetCurrent()
-                let config = self.configuration
-                let containerWidth = UIScreen.main.bounds.width - 32
-                let renderer = MarkdownRenderer(configuration: config, containerWidth: containerWidth)
-                let (elements, attachments, tocItems, tocId) = renderer.render(processedMarkdown)
-                let markdownParseTime = CFAbsoluteTimeGetCurrent() - markdownParseStart
-                print("[STREAM] Markdown解析完成: \(elements.count) 个元素, 耗时 \(String(format: "%.1f", markdownParseTime * 1000))ms")
+            // 2. 一次性解析整个文本
+            let markdownParseStart = CFAbsoluteTimeGetCurrent()
+            let config = self.configuration
+            let containerWidth = UIScreen.main.bounds.width - 32
+            let renderer = MarkdownRenderer(configuration: config, containerWidth: containerWidth)
+            let (elements, attachments, tocItems, tocId) = renderer.render(processedMarkdown)
+            let markdownParseTime = CFAbsoluteTimeGetCurrent() - markdownParseStart
+            print("[STREAM] Markdown解析完成: \(elements.count) 个元素, 耗时 \(String(format: "%.1f", markdownParseTime * 1000))ms")
 
-                // 3. 按标题分割，计算每个分片包含的元素范围
-                let chunkRanges = self.calculateChunkElementRanges(
-                    text: processedMarkdown,
-                    elements: elements
-                )
+            // 3. 按标题分割，计算每个分片包含的元素范围
+            let chunkRanges = self.calculateChunkElementRanges(
+                text: processedMarkdown,
+                elements: elements
+            )
 
-                let totalParseTime = CFAbsoluteTimeGetCurrent() - parseStartTime
-                print("[STREAM] 后台解析全部完成: \(chunkRanges.count) 个分片, 总耗时 \(String(format: "%.1f", totalParseTime * 1000))ms")
+            let totalParseTime = CFAbsoluteTimeGetCurrent() - parseStartTime
+            print("[STREAM] 后台解析全部完成: \(chunkRanges.count) 个分片, 总耗时 \(String(format: "%.1f", totalParseTime * 1000))ms")
 
-                DispatchQueue.main.async { [weak self] in
-                    guard let self = self, self.isStreaming else { return }
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self, self.isStreaming else { return }
 
-                    let mainThreadStart = CFAbsoluteTimeGetCurrent()
-                    print("[STREAM] 主线程开始显示...")
+                let mainThreadStart = CFAbsoluteTimeGetCurrent()
+                print("[STREAM] 主线程开始显示...")
 
-                    // 保存解析结果
-                    self.streamParsedFootnotes = footnotes
-                    self.streamParsedElements = elements
-                    self.streamParsedAttachments = attachments
-                    self.imageAttachments = attachments
-                    self.tableOfContents = tocItems
-                    self.tocSectionId = tocId
-                    self.fakeStreamParsedText = processedMarkdown
-                    self.streamFullText = processedMarkdown
-                    self.streamPreParseCompleted = true
+                // 保存解析结果
+                self.streamParsedFootnotes = footnotes
+                self.streamParsedElements = elements
+                self.streamParsedAttachments = attachments
+                self.imageAttachments = attachments
+                self.tableOfContents = tocItems
+                self.tocSectionId = tocId
+                self.fakeStreamParsedText = processedMarkdown
+                self.streamFullText = processedMarkdown
+                self.streamPreParseCompleted = true
 
-                    // 开始分段显示
-                    self.displayChunksSequentially(
-                        chunkRanges: chunkRanges,
-                        currentIndex: 0,
-                        onStart: onStart,
-                        streamStartTime: streamStartTime
-                    )
-                }
-            }
-        }
-
-        /// ⭐️ 新增：计算每个分片对应的元素范围
-        private func calculateChunkElementRanges(
-            text: String,
-            elements: [MarkdownRenderElement]
-        ) -> [(startIndex: Int, endIndex: Int)] {
-            let totalElements = elements.count
-
-            // ⭐️ 优化：设置合理的分片参数
-            let maxChunks = 20           // 最多20个分片，避免过多延迟
-            let minElementsPerChunk = 8  // 每片至少8个元素
-
-            // 计算合适的分片数量
-            let idealChunkCount = max(1, totalElements / minElementsPerChunk)
-            let chunkCount = min(idealChunkCount, maxChunks)
-            let elementsPerChunk = max(minElementsPerChunk, totalElements / chunkCount)
-
-            print("[STREAM] 分片策略: 总元素 \(totalElements), 分片数 \(chunkCount), 每片约 \(elementsPerChunk) 个元素")
-
-            var ranges: [(startIndex: Int, endIndex: Int)] = []
-            var currentStart = 0
-
-            for i in 0..<chunkCount {
-                let isLastChunk = (i == chunkCount - 1)
-                let endIndex = isLastChunk ? totalElements : min(currentStart + elementsPerChunk, totalElements)
-
-                if currentStart < endIndex {
-                    ranges.append((currentStart, endIndex))
-                    currentStart = endIndex
-                }
-            }
-
-            // 确保所有元素都被包含
-            if currentStart < totalElements {
-                if ranges.isEmpty {
-                    ranges.append((currentStart, totalElements))
-                } else {
-                    // 扩展最后一个分片
-                    let last = ranges.removeLast()
-                    ranges.append((last.startIndex, totalElements))
-                }
-            }
-
-            return ranges
-        }
-
-        /// ⭐️ 新增：按顺序显示分片
-        private func displayChunksSequentially(
-            chunkRanges: [(startIndex: Int, endIndex: Int)],
-            currentIndex: Int,
-            onStart: (() -> Void)?,
-            streamStartTime: CFAbsoluteTime
-        ) {
-            guard isStreaming else { return }
-            guard currentIndex < chunkRanges.count else {
-                // 所有分片显示完成
-                let elapsed = (CFAbsoluteTimeGetCurrent() - streamStartTime) * 1000
-                print("[STREAM] 所有分片显示完成, 总耗时: \(String(format: "%.1f", elapsed))ms")
-                finishChunkedParsing()
-                return
-            }
-
-            let range = chunkRanges[currentIndex]
-            let isFirstChunk = (currentIndex == 0)
-            let chunkStartTime = CFAbsoluteTimeGetCurrent()
-
-            print("[STREAM] 显示分片 \(currentIndex + 1)/\(chunkRanges.count): 元素 \(range.startIndex)..<\(range.endIndex)")
-
-            // 显示当前分片的元素
-            let containerWidth = bounds.width > 0 ? bounds.width : UIScreen.main.bounds.width - 32
-
-            var latexCount = 0
-            var latexTotalTime: Double = 0
-
-            for i in range.startIndex..<range.endIndex {
-                guard i < streamParsedElements.count else { break }
-                let element = streamParsedElements[i]
-
-                let viewStartTime = CFAbsoluteTimeGetCurrent()
-                let view = createView(for: element, containerWidth: containerWidth)
-                let viewTime = CFAbsoluteTimeGetCurrent() - viewStartTime
-
-                // 记录 LaTeX 创建时间
-                if case .latex = element {
-                    latexCount += 1
-                    latexTotalTime += viewTime
-                    print("[STREAM] LaTeX #\(latexCount) 创建耗时: \(String(format: "%.1f", viewTime * 1000))ms")
-                }
-
-                view.tag = 1000 + i
-
-                if enableTypewriterEffect {
-                    view.isHidden = true
-                    contentStackView.addArrangedSubview(view)
-                    typewriterEngine.enqueue(view: view)
-                } else {
-                    contentStackView.addArrangedSubview(view)
-                }
-
-                // 注册 heading
-                if case .heading(let id, _) = element {
-                    headingViews[id] = view
-                    if id == tocSectionId { tocSectionView = view }
-                }
-            }
-
-            let chunkTime = CFAbsoluteTimeGetCurrent() - chunkStartTime
-            print("[STREAM] 分片 \(currentIndex + 1) 完成: \(range.endIndex - range.startIndex) 个元素, 耗时 \(String(format: "%.1f", chunkTime * 1000))ms" +
-                  (latexCount > 0 ? ", 其中 \(latexCount) 个LaTeX耗时 \(String(format: "%.1f", latexTotalTime * 1000))ms" : ""))
-
-            streamDisplayedCount = range.endIndex
-            oldElements = Array(streamParsedElements.prefix(range.endIndex))
-
-            // 第一个分片显示后触发 onStart
-            if isFirstChunk {
-                let elapsed = (CFAbsoluteTimeGetCurrent() - streamStartTime) * 1000
-                print("[STREAM] 首个分片完成，触发 onStart, 从开始到现在: \(String(format: "%.1f", elapsed))ms")
-                onStart?()
-            }
-
-            if enableTypewriterEffect {
-                typewriterEngine.start()
-            }
-
-            notifyHeightChange()
-
-            // 延迟显示下一个分片（给 UI 喘息时间）
-            // ⭐️ 优化：从50ms降到20ms，配合最多20个分片，最大延迟 = 20 × 20ms = 400ms
-            let elapsedSoFar = (CFAbsoluteTimeGetCurrent() - streamStartTime) * 1000
-            print("[STREAM] ⏱️ 准备显示分片 \(currentIndex + 2)/\(chunkRanges.count), 已累计耗时: \(String(format: "%.1f", elapsedSoFar))ms, 即将等待20ms...")
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) { [weak self] in
-                self?.displayChunksSequentially(
+                // 开始分段显示
+                self.displayChunksSequentially(
                     chunkRanges: chunkRanges,
-                    currentIndex: currentIndex + 1,
-                    onStart: nil,  // onStart 只在第一个分片触发
+                    currentIndex: 0,
+                    onStart: onStart,
                     streamStartTime: streamStartTime
                 )
             }
         }
+    }
 
-        /// 将 Markdown 文本按标题分成多个模块（智能分片）
-        private func splitIntoChunks(_ text: String) -> [String] {
-            var chunks: [String] = []
+    /// ⭐️ 新增：计算每个分片对应的元素范围
+    private func calculateChunkElementRanges(
+        text: String,
+        elements: [MarkdownRenderElement]
+    ) -> [(startIndex: Int, endIndex: Int)] {
+        let totalElements = elements.count
 
-            // 使用正则匹配标题行（# ## ### 等）
-            // 匹配行首的 1-6 个 # 后跟空格和内容
-            let headingPattern = "(?m)^(#{1,6})\\s+.+"
+        // ⭐️ 优化：设置合理的分片参数
+        let maxChunks = 20           // 最多20个分片，避免过多延迟
+        let minElementsPerChunk = 8  // 每片至少8个元素
 
-            guard let regex = try? NSRegularExpression(pattern: headingPattern, options: []) else {
-                // 正则失败，返回整个文本作为一个分片
-                return [text]
-            }
+        // 计算合适的分片数量
+        let idealChunkCount = max(1, totalElements / minElementsPerChunk)
+        let chunkCount = min(idealChunkCount, maxChunks)
+        let elementsPerChunk = max(minElementsPerChunk, totalElements / chunkCount)
 
-            let nsText = text as NSString
-            let matches = regex.matches(in: text, options: [], range: NSRange(location: 0, length: nsText.length))
+        print("[STREAM] 分片策略: 总元素 \(totalElements), 分片数 \(chunkCount), 每片约 \(elementsPerChunk) 个元素")
 
-            if matches.isEmpty {
-                // 没有标题，返回整个文本
-                return [text]
-            }
+        var ranges: [(startIndex: Int, endIndex: Int)] = []
+        var currentStart = 0
 
-            // 提取所有标题位置
-            var headingPositions: [(location: Int, level: Int)] = []
-            for match in matches {
-                let headingLine = nsText.substring(with: match.range)
-                // 计算标题级别（# 的数量）
-                var level = 0
-                for char in headingLine {
-                    if char == "#" {
-                        level += 1
-                    } else {
-                        break
-                    }
-                }
-                headingPositions.append((match.range.location, level))
-            }
+        for i in 0..<chunkCount {
+            let isLastChunk = (i == chunkCount - 1)
+            let endIndex = isLastChunk ? totalElements : min(currentStart + elementsPerChunk, totalElements)
 
-            // 按标题位置分割文本
-            for (index, heading) in headingPositions.enumerated() {
-                let startPos = heading.location
-                let endPos: Int
-
-                if index + 1 < headingPositions.count {
-                    // 下一个标题的位置
-                    endPos = headingPositions[index + 1].location
-                } else {
-                    // 最后一个标题，到文本末尾
-                    endPos = nsText.length
-                }
-
-                let chunkRange = NSRange(location: startPos, length: endPos - startPos)
-                let chunk = nsText.substring(with: chunkRange)
-
-                if !chunk.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    chunks.append(chunk)
-                }
-            }
-
-            // 如果第一个标题之前有内容，添加为第一个分片
-            if let firstHeading = headingPositions.first, firstHeading.location > 0 {
-                let prefixRange = NSRange(location: 0, length: firstHeading.location)
-                let prefix = nsText.substring(with: prefixRange)
-                if !prefix.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    chunks.insert(prefix, at: 0)
-                }
-            }
-
-            print("📦 [Fake-Stream] Split by headings: \(chunks.count) chunks")
-            for (i, chunk) in chunks.enumerated() {
-                let firstLine = chunk.components(separatedBy: .newlines).first ?? ""
-                let preview = String(firstLine.prefix(50))
-                print("  ├─ Chunk[\(i)]: \"\(preview)...\" (\(chunk.count) chars)")
-            }
-
-            return chunks
-        }
-
-        /// 解析下一个片段
-        /// ⭐️ 重构：分片解析完成后直接显示，不再需要 token 流式
-        private func parseNextChunk(
-            fullText: String,
-            unit: StreamingUnit,
-            unitsPerChunk: Int,
-            interval: TimeInterval,
-            onStart: (() -> Void)?
-        ) {
-            guard isStreaming else { return }
-            guard fakeStreamChunkIndex < fakeStreamChunks.count else {
-                // ⭐️ 所有片段解析完成，直接结束流式（不再启动 token 流式）
-                print("✅ [Fake-Stream] All chunks parsed, finishing stream...")
-                finishChunkedParsing()
-                return
-            }
-
-            let chunkToAdd = fakeStreamChunks[fakeStreamChunkIndex]
-            fakeStreamChunkIndex += 1
-
-            // 累积已解析的文本
-            fakeStreamParsedText += chunkToAdd
-
-            let textToParse = fakeStreamParsedText
-            let isFirstChunk = (fakeStreamChunkIndex == 1)
-
-            print("📝 [Fake-Stream] Parsing chunk \(fakeStreamChunkIndex)/\(fakeStreamChunks.count)...")
-
-            // 后台解析当前累积的文本
-            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-                guard let self = self else { return }
-
-                let parseStartTime = CFAbsoluteTimeGetCurrent()
-
-                let config = self.configuration
-                let containerWidth = UIScreen.main.bounds.width - 32
-                let renderer = MarkdownRenderer(configuration: config, containerWidth: containerWidth)
-                let (elements, attachments, tocItems, tocId) = renderer.render(textToParse)
-
-                let parseDuration = CFAbsoluteTimeGetCurrent() - parseStartTime
-
-                DispatchQueue.main.async { [weak self] in
-                    guard let self = self, self.isStreaming else { return }
-
-                    let previousCount = self.streamParsedElements.count
-                    let newElements = Array(elements.dropFirst(previousCount))
-
-                    print("✅ [Fake-Stream] Chunk \(self.fakeStreamChunkIndex) parsed: +\(newElements.count) elements, " +
-                          "total: \(elements.count), time: \(String(format: "%.1f", parseDuration * 1000))ms")
-
-                    // 更新解析结果
-                    self.streamParsedElements = elements
-                    self.streamParsedAttachments = attachments
-                    self.imageAttachments = attachments
-                    self.tableOfContents = tocItems
-                    self.tocSectionId = tocId
-
-                    // ⭐️ 第一个分片解析完成时触发 onStart
-                    if isFirstChunk {
-                        onStart?()
-                    }
-
-                    // 显示新元素（立即触发 TypewriterEngine 动画）
-                    if !newElements.isEmpty {
-                        self.displayNewStreamElements()
-                    }
-
-                    // ⭐️ 继续解析下一个分片（移除对 startTokenStreamingAfterParse 的调用）
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) { [weak self] in
-                        self?.parseNextChunk(fullText: fullText, unit: unit, unitsPerChunk: unitsPerChunk, interval: interval, onStart: onStart)
-                    }
-                }
+            if currentStart < endIndex {
+                ranges.append((currentStart, endIndex))
+                currentStart = endIndex
             }
         }
 
-        /// ⭐️ 新增：分片解析完成后的收尾工作
-        private func finishChunkedParsing() {
-            guard isStreaming else { return }
-
-            // 1. ⭐️ 先设置 markdown 和 streamFullText（此时 isStreaming 还是 true，scheduleRerender 会跳过）
-            markdown = fakeStreamParsedText
-            streamFullText = fakeStreamParsedText  // ⭐️ 修复：确保 performFinalParse 使用正确的文本
-
-            // ⚠️ 注意：不要在这里设置 isStreaming = false
-            // 而是在 finishBlock 执行完毕后才设置，确保整个显示过程中滚动都能正常工作
-
-            print("🎉 [Fake-Stream] All chunks parsed, waiting for TypewriterEngine to finish...")
-
-            // 3. ⭐️ 核心修复：脚注必须等 TypewriterEngine 动画完成后再渲染
-            //    否则会出现"目录渲染完脚注就出来了"的问题
-            let footnotes = streamParsedFootnotes
-            let completionHandler = onStreamComplete
-
-            // 定义收尾逻辑（脚注渲染 + 最终解析 + 回调）
-            let finishBlock: () -> Void = { [weak self] in
-                guard let self = self else { return }
-
-                // ⚠️ 现在才标记流式结束
-                self.isStreaming = false
-
-                // 渲染脚注（最后才渲染）
-                if !footnotes.isEmpty {
-                    let containerWidth = self.bounds.width > 0 ? self.bounds.width : UIScreen.main.bounds.width - 32
-                    let elementCount = self.streamParsedElements.count
-                    print("🔖 [Footnotes] TypewriterEngine finished, rendering \(footnotes.count) footnote(s) now")
-                    self.updateFootnotes(footnotes, width: containerWidth, newElementCount: elementCount)
-                }
-
-                // 执行最终解析确保 TOC 完整
-                self.performFinalParse()
-
-                // 触发完成回调
-                completionHandler?()
-
-                print("🎉 [Fake-Stream] Streaming completed!")
-            }
-
-            // ⭐️ 关键检查：如果 TypewriterEngine 已经空闲，直接执行收尾逻辑
-            if typewriterEngine.isIdle {
-                print("📌 [Fake-Stream] TypewriterEngine already idle, executing finish block immediately")
-                finishBlock()
+        // 确保所有元素都被包含
+        if currentStart < totalElements {
+            if ranges.isEmpty {
+                ranges.append((currentStart, totalElements))
             } else {
-                // TypewriterEngine 还在运行，设置完成回调
-                let originalOnComplete = typewriterEngine.onComplete
-                typewriterEngine.onComplete = { [weak self] in
-                    // 恢复原回调
-                    self?.typewriterEngine.onComplete = originalOnComplete
-                    originalOnComplete?()
-
-                    // 执行收尾逻辑
-                    finishBlock()
-                }
-            }
-
-            // 清理外部回调引用
-            onStreamComplete = nil
-        }
-
-        /// 分片解析完成后启动 Token 流式
-        private func startTokenStreamingAfterParse(
-            _ text: String,
-            unit: StreamingUnit,
-            unitsPerChunk: Int,
-            interval: TimeInterval,
-            onStart: (() -> Void)?
-        ) {
-            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-                guard let self = self else { return }
-
-                let fullText = text
-                let tokens = self.tokenize(fullText, unit: unit)
-                let atomicRanges = self.calculateAtomicRanges(in: fullText)
-
-                DispatchQueue.main.async {
-                    guard self.isStreaming else { return }
-
-                    self.currentStreamingUnit = unit
-                    self.markdown = ""
-                    onStart?()
-
-                    self.streamFullText = fullText
-                    self.streamTokens = tokens
-                    self.streamAtomicRanges = atomicRanges
-                    self.atomicRangeStartSet = Set(atomicRanges.map { $0.location })
-                    self.streamTokenIndex = 0
-
-                    // 预渲染脚注
-                    self.prerenderFootnotesInBackground(fullText: fullText)
-
-                    // 启动 Timer（使用原有的 appendNextTokensAtomic）
-                    self.streamTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
-                        self?.appendNextTokensAtomic(count: unitsPerChunk)
-                    }
-                }
+                // 扩展最后一个分片
+                let last = ranges.removeLast()
+                ranges.append((last.startIndex, totalElements))
             }
         }
 
-        /// 开始增量解析模式的 Token 流式追加（保留但不再使用）
-        private func startTokenStreamingIncremental(
-            _ text: String,
-            unit: StreamingUnit,
-            unitsPerChunk: Int,
-            interval: TimeInterval,
-            onStart: (() -> Void)?
-        ) {
-            // 已被 parseNextChunk + startTokenStreamingAfterParse 替代
+        return ranges
+    }
+
+    /// ⭐️ 新增：按顺序显示分片
+    private func displayChunksSequentially(
+        chunkRanges: [(startIndex: Int, endIndex: Int)],
+        currentIndex: Int,
+        onStart: (() -> Void)?,
+        streamStartTime: CFAbsoluteTime
+    ) {
+        guard isStreaming else { return }
+        guard currentIndex < chunkRanges.count else {
+            // 所有分片显示完成
+            let elapsed = (CFAbsoluteTimeGetCurrent() - streamStartTime) * 1000
+            print("[STREAM] 所有分片显示完成, 总耗时: \(String(format: "%.1f", elapsed))ms")
+            finishChunkedParsing()
+            return
         }
 
-        /// 智能追加 Token + 增量解析（保留但不再使用）
-        private func appendNextTokensWithIncrementalParse(count: Int) {
-            // 已被 appendNextTokensAtomic 替代
-        }
+        let range = chunkRanges[currentIndex]
+        let isFirstChunk = (currentIndex == 0)
+        let chunkStartTime = CFAbsoluteTimeGetCurrent()
 
-        /// 触发增量解析（节流模式：每 200ms 最多解析一次）
-        private func triggerIncrementalParseIfNeeded() {
-            // 分片解析模式下不需要此方法
-        }
+        print("[STREAM] 显示分片 \(currentIndex + 1)/\(chunkRanges.count): 元素 \(range.startIndex)..<\(range.endIndex)")
 
-        /// 执行假流式的增量解析
-        private func performIncrementalParseForFakeStream() {
-            // 分片解析模式下不需要此方法
-        }
+        // 显示当前分片的元素
+        let containerWidth = bounds.width > 0 ? bounds.width : UIScreen.main.bounds.width - 32
 
-        /// 显示新解析出的元素（使用 TypewriterEngine）
-        private func displayNewStreamElements() {
-            guard streamDisplayedCount < streamParsedElements.count else { return }
+        var latexCount = 0
+        var latexTotalTime: Double = 0
 
-            let containerWidth = bounds.width > 0 ? bounds.width : UIScreen.main.bounds.width - 32
+        for i in range.startIndex..<range.endIndex {
+            guard i < streamParsedElements.count else { break }
+            let element = streamParsedElements[i]
 
-            print("📺 [Fake-Stream] Showing elements \(streamDisplayedCount)..<\(streamParsedElements.count)")
+            let viewStartTime = CFAbsoluteTimeGetCurrent()
+            let view = createView(for: element, containerWidth: containerWidth)
+            let viewTime = CFAbsoluteTimeGetCurrent() - viewStartTime
 
-            for i in streamDisplayedCount..<streamParsedElements.count {
-                let element = streamParsedElements[i]
-                print("  ├─ Element[\(i)]: \(elementTypeString(element))")
-
-                let view = createView(for: element, containerWidth: containerWidth)
-                view.tag = 1000 + i
-
-                // ⭐️ 恢复：所有元素都走 TypewriterEngine，保持统一的动画节奏
-                if enableTypewriterEffect {
-                    view.isHidden = true
-                    contentStackView.addArrangedSubview(view)
-                    typewriterEngine.enqueue(view: view)
-                } else {
-                    contentStackView.addArrangedSubview(view)
-                }
-
-                // 注册 heading
-                if case .heading(let id, _) = element {
-                    headingViews[id] = view
-                    if id == tocSectionId { tocSectionView = view }
-                }
+            // 记录 LaTeX 创建时间
+            if case .latex = element {
+                latexCount += 1
+                latexTotalTime += viewTime
+                print("[STREAM] LaTeX #\(latexCount) 创建耗时: \(String(format: "%.1f", viewTime * 1000))ms")
             }
 
-            streamDisplayedCount = streamParsedElements.count
-            oldElements = streamParsedElements
+            view.tag = 1000 + i
 
             if enableTypewriterEffect {
-                typewriterEngine.start()
+                view.isHidden = true
+                contentStackView.addArrangedSubview(view)
+                typewriterEngine.enqueue(view: view)
+            } else {
+                contentStackView.addArrangedSubview(view)
             }
 
-            notifyHeightChange()
-        }
-
-        /// 判断是否为块级元素（保留方法，供后续使用）
-        private func isBlockLevelElement(_ element: MarkdownRenderElement) -> Bool {
-            switch element {
-            case .latex, .table, .codeBlock, .image, .thematicBreak, .rawHTML:
-                return true
-            case .details, .list, .quote:
-                return true
-            case .heading, .attributedText:
-                return false
-            case .custom:
-                return true  // 自定义元素默认作为块级元素
+            // 注册 heading
+            if case .heading(let id, _) = element {
+                headingViews[id] = view
+                if id == tocSectionId { tocSectionView = view }
             }
         }
 
-        /// 最终完整解析（确保所有元素都正确显示）
-        private func performFinalParse() {
-            let fullText = streamFullText
+        let chunkTime = CFAbsoluteTimeGetCurrent() - chunkStartTime
+        print("[STREAM] 分片 \(currentIndex + 1) 完成: \(range.endIndex - range.startIndex) 个元素, 耗时 \(String(format: "%.1f", chunkTime * 1000))ms" +
+              (latexCount > 0 ? ", 其中 \(latexCount) 个LaTeX耗时 \(String(format: "%.1f", latexTotalTime * 1000))ms" : ""))
 
-            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-                guard let self = self else { return }
+        streamDisplayedCount = range.endIndex
+        oldElements = Array(streamParsedElements.prefix(range.endIndex))
 
-                let config = self.configuration
-                let containerWidth = UIScreen.main.bounds.width - 32
-                let renderer = MarkdownRenderer(configuration: config, containerWidth: containerWidth)
-                let (elements, attachments, tocItems, tocId) = renderer.render(fullText)
+        // 第一个分片显示后触发 onStart
+        if isFirstChunk {
+            let elapsed = (CFAbsoluteTimeGetCurrent() - streamStartTime) * 1000
+            print("[STREAM] 首个分片完成，触发 onStart, 从开始到现在: \(String(format: "%.1f", elapsed))ms")
+            onStart?()
+        }
 
-                DispatchQueue.main.async { [weak self] in
-                    guard let self = self else { return }
+        if enableTypewriterEffect {
+            typewriterEngine.start()
+        }
 
-                    // 检查是否有遗漏的元素
-                    if elements.count > self.streamParsedElements.count {
-                        print("🔧 [Fake-Stream] Final parse found \(elements.count - self.streamParsedElements.count) missing elements")
+        notifyHeightChange()
 
-                        // 添加遗漏的元素
-                        let containerWidth = self.bounds.width > 0 ? self.bounds.width : UIScreen.main.bounds.width - 32
+        // 延迟显示下一个分片（给 UI 喘息时间）
+        // ⭐️ 优化：从50ms降到20ms，配合最多20个分片，最大延迟 = 20 × 20ms = 400ms
+        let elapsedSoFar = (CFAbsoluteTimeGetCurrent() - streamStartTime) * 1000
+        print("[STREAM] ⏱️ 准备显示分片 \(currentIndex + 2)/\(chunkRanges.count), 已累计耗时: \(String(format: "%.1f", elapsedSoFar))ms, 即将等待20ms...")
 
-                        for i in self.streamParsedElements.count..<elements.count {
-                            let element = elements[i]
-                            let view = self.createView(for: element, containerWidth: containerWidth)
-                            view.tag = 1000 + i
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) { [weak self] in
+            self?.displayChunksSequentially(
+                chunkRanges: chunkRanges,
+                currentIndex: currentIndex + 1,
+                onStart: nil,  // onStart 只在第一个分片触发
+                streamStartTime: streamStartTime
+            )
+        }
+    }
 
-                            if self.enableTypewriterEffect {
-                                view.isHidden = true
-                                self.contentStackView.addArrangedSubview(view)
-                                self.typewriterEngine.enqueue(view: view)
-                            } else {
-                                self.contentStackView.addArrangedSubview(view)
-                            }
+    /// 将 Markdown 文本按标题分成多个模块（智能分片）
+    private func splitIntoChunks(_ text: String) -> [String] {
+        var chunks: [String] = []
 
-                            if case .heading(let id, _) = element {
-                                self.headingViews[id] = view
-                                if id == tocId { self.tocSectionView = view }
-                            }
-                        }
+        // 使用正则匹配标题行（# ## ### 等）
+        // 匹配行首的 1-6 个 # 后跟空格和内容
+        let headingPattern = "(?m)^(#{1,6})\\s+.+"
 
-                        self.streamParsedElements = elements
-                        self.streamDisplayedCount = elements.count
+        guard let regex = try? NSRegularExpression(pattern: headingPattern, options: []) else {
+            // 正则失败，返回整个文本作为一个分片
+            return [text]
+        }
 
-                        if self.enableTypewriterEffect {
-                            self.typewriterEngine.start()
-                        }
-                    }
+        let nsText = text as NSString
+        let matches = regex.matches(in: text, options: [], range: NSRange(location: 0, length: nsText.length))
 
-                    self.imageAttachments = attachments
-                    self.tableOfContents = tocItems
-                    self.tocSectionId = tocId
-                    self.oldElements = elements
+        if matches.isEmpty {
+            // 没有标题，返回整个文本
+            return [text]
+        }
 
-                    self.notifyHeightChange()
+        // 提取所有标题位置
+        var headingPositions: [(location: Int, level: Int)] = []
+        for match in matches {
+            let headingLine = nsText.substring(with: match.range)
+            // 计算标题级别（# 的数量）
+            var level = 0
+            for char in headingLine {
+                if char == "#" {
+                    level += 1
+                } else {
+                    break
+                }
+            }
+            headingPositions.append((match.range.location, level))
+        }
+
+        // 按标题位置分割文本
+        for (index, heading) in headingPositions.enumerated() {
+            let startPos = heading.location
+            let endPos: Int
+
+            if index + 1 < headingPositions.count {
+                // 下一个标题的位置
+                endPos = headingPositions[index + 1].location
+            } else {
+                // 最后一个标题，到文本末尾
+                endPos = nsText.length
+            }
+
+            let chunkRange = NSRange(location: startPos, length: endPos - startPos)
+            let chunk = nsText.substring(with: chunkRange)
+
+            if !chunk.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                chunks.append(chunk)
+            }
+        }
+
+        // 如果第一个标题之前有内容，添加为第一个分片
+        if let firstHeading = headingPositions.first, firstHeading.location > 0 {
+            let prefixRange = NSRange(location: 0, length: firstHeading.location)
+            let prefix = nsText.substring(with: prefixRange)
+            if !prefix.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                chunks.insert(prefix, at: 0)
+            }
+        }
+
+        print("📦 [Fake-Stream] Split by headings: \(chunks.count) chunks")
+        for (i, chunk) in chunks.enumerated() {
+            let firstLine = chunk.components(separatedBy: .newlines).first ?? ""
+            let preview = String(firstLine.prefix(50))
+            print("  ├─ Chunk[\(i)]: \"\(preview)...\" (\(chunk.count) chars)")
+        }
+
+        return chunks
+    }
+
+    /// 解析下一个片段
+    /// ⭐️ 重构：分片解析完成后直接显示，不再需要 token 流式
+    private func parseNextChunk(
+        fullText: String,
+        unit: StreamingUnit,
+        unitsPerChunk: Int,
+        interval: TimeInterval,
+        onStart: (() -> Void)?
+    ) {
+        guard isStreaming else { return }
+        guard fakeStreamChunkIndex < fakeStreamChunks.count else {
+            // ⭐️ 所有片段解析完成，直接结束流式（不再启动 token 流式）
+            print("✅ [Fake-Stream] All chunks parsed, finishing stream...")
+            finishChunkedParsing()
+            return
+        }
+
+        let chunkToAdd = fakeStreamChunks[fakeStreamChunkIndex]
+        fakeStreamChunkIndex += 1
+
+        // 累积已解析的文本
+        fakeStreamParsedText += chunkToAdd
+
+        let textToParse = fakeStreamParsedText
+        let isFirstChunk = (fakeStreamChunkIndex == 1)
+
+        print("📝 [Fake-Stream] Parsing chunk \(fakeStreamChunkIndex)/\(fakeStreamChunks.count)...")
+
+        // 后台解析当前累积的文本
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else { return }
+
+            let parseStartTime = CFAbsoluteTimeGetCurrent()
+
+            let config = self.configuration
+            let containerWidth = UIScreen.main.bounds.width - 32
+            let renderer = MarkdownRenderer(configuration: config, containerWidth: containerWidth)
+            let (elements, attachments, tocItems, tocId) = renderer.render(textToParse)
+
+            let parseDuration = CFAbsoluteTimeGetCurrent() - parseStartTime
+
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self, self.isStreaming else { return }
+
+                let previousCount = self.streamParsedElements.count
+                let newElements = Array(elements.dropFirst(previousCount))
+
+                print("✅ [Fake-Stream] Chunk \(self.fakeStreamChunkIndex) parsed: +\(newElements.count) elements, " +
+                      "total: \(elements.count), time: \(String(format: "%.1f", parseDuration * 1000))ms")
+
+                // 更新解析结果
+                self.streamParsedElements = elements
+                self.streamParsedAttachments = attachments
+                self.imageAttachments = attachments
+                self.tableOfContents = tocItems
+                self.tocSectionId = tocId
+
+                // ⭐️ 第一个分片解析完成时触发 onStart
+                if isFirstChunk {
+                    onStart?()
+                }
+
+                // 显示新元素（立即触发 TypewriterEngine 动画）
+                if !newElements.isEmpty {
+                    self.displayNewStreamElements()
+                }
+
+                // ⭐️ 继续解析下一个分片（移除对 startTokenStreamingAfterParse 的调用）
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) { [weak self] in
+                    self?.parseNextChunk(fullText: fullText, unit: unit, unitsPerChunk: unitsPerChunk, interval: interval, onStart: onStart)
                 }
             }
         }
+    }
+
+    /// ⭐️ 新增：分片解析完成后的收尾工作
+    private func finishChunkedParsing() {
+        guard isStreaming else { return }
+
+        // 1. ⭐️ 先设置 markdown 和 streamFullText（此时 isStreaming 还是 true，scheduleRerender 会跳过）
+        markdown = fakeStreamParsedText
+        streamFullText = fakeStreamParsedText  // ⭐️ 修复：确保 performFinalParse 使用正确的文本
+
+        // ⚠️ 注意：不要在这里设置 isStreaming = false
+        // 而是在 finishBlock 执行完毕后才设置，确保整个显示过程中滚动都能正常工作
+
+        print("🎉 [Fake-Stream] All chunks parsed, waiting for TypewriterEngine to finish...")
+
+        // 3. ⭐️ 核心修复：脚注必须等 TypewriterEngine 动画完成后再渲染
+        //    否则会出现"目录渲染完脚注就出来了"的问题
+        let footnotes = streamParsedFootnotes
+        let completionHandler = onStreamComplete
+
+        // 定义收尾逻辑（脚注渲染 + 最终解析 + 回调）
+        let finishBlock: () -> Void = { [weak self] in
+            guard let self = self else { return }
+
+            // ⚠️ 现在才标记流式结束
+            self.isStreaming = false
+
+            // 渲染脚注（最后才渲染）
+            if !footnotes.isEmpty {
+                let containerWidth = self.bounds.width > 0 ? self.bounds.width : UIScreen.main.bounds.width - 32
+                let elementCount = self.streamParsedElements.count
+                print("🔖 [Footnotes] TypewriterEngine finished, rendering \(footnotes.count) footnote(s) now")
+                self.updateFootnotes(footnotes, width: containerWidth, newElementCount: elementCount)
+            }
+
+            // 执行最终解析确保 TOC 完整
+            self.performFinalParse()
+
+            // 触发完成回调
+            completionHandler?()
+
+            print("🎉 [Fake-Stream] Streaming completed!")
+        }
+
+        // ⭐️ 关键检查：如果 TypewriterEngine 已经空闲，直接执行收尾逻辑
+        if typewriterEngine.isIdle {
+            print("📌 [Fake-Stream] TypewriterEngine already idle, executing finish block immediately")
+            finishBlock()
+        } else {
+            // TypewriterEngine 还在运行，设置完成回调
+            let originalOnComplete = typewriterEngine.onComplete
+            typewriterEngine.onComplete = { [weak self] in
+                // 恢复原回调
+                self?.typewriterEngine.onComplete = originalOnComplete
+                originalOnComplete?()
+
+                // 执行收尾逻辑
+                finishBlock()
+            }
+        }
+
+        // 清理外部回调引用
+        onStreamComplete = nil
+    }
+
+    /// 分片解析完成后启动 Token 流式
+    private func startTokenStreamingAfterParse(
+        _ text: String,
+        unit: StreamingUnit,
+        unitsPerChunk: Int,
+        interval: TimeInterval,
+        onStart: (() -> Void)?
+    ) {
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else { return }
+
+            let fullText = text
+            let tokens = self.tokenize(fullText, unit: unit)
+            let atomicRanges = self.calculateAtomicRanges(in: fullText)
+
+            DispatchQueue.main.async {
+                guard self.isStreaming else { return }
+
+                self.currentStreamingUnit = unit
+                self.markdown = ""
+                onStart?()
+
+                self.streamFullText = fullText
+                self.streamTokens = tokens
+                self.streamAtomicRanges = atomicRanges
+                self.atomicRangeStartSet = Set(atomicRanges.map { $0.location })
+                self.streamTokenIndex = 0
+
+                // 预渲染脚注
+                self.prerenderFootnotesInBackground(fullText: fullText)
+
+                // 启动 Timer（使用原有的 appendNextTokensAtomic）
+                self.streamTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+                    self?.appendNextTokensAtomic(count: unitsPerChunk)
+                }
+            }
+        }
+    }
+
+    /// 开始增量解析模式的 Token 流式追加（保留但不再使用）
+    private func startTokenStreamingIncremental(
+        _ text: String,
+        unit: StreamingUnit,
+        unitsPerChunk: Int,
+        interval: TimeInterval,
+        onStart: (() -> Void)?
+    ) {
+        // 已被 parseNextChunk + startTokenStreamingAfterParse 替代
+    }
+
+    /// 智能追加 Token + 增量解析（保留但不再使用）
+    private func appendNextTokensWithIncrementalParse(count: Int) {
+        // 已被 appendNextTokensAtomic 替代
+    }
+
+    /// 触发增量解析（节流模式：每 200ms 最多解析一次）
+    private func triggerIncrementalParseIfNeeded() {
+        // 分片解析模式下不需要此方法
+    }
+
+    /// 执行假流式的增量解析
+    private func performIncrementalParseForFakeStream() {
+        // 分片解析模式下不需要此方法
+    }
+
+    /// 显示新解析出的元素（使用 TypewriterEngine）
+    private func displayNewStreamElements() {
+        guard streamDisplayedCount < streamParsedElements.count else { return }
+
+        let containerWidth = bounds.width > 0 ? bounds.width : UIScreen.main.bounds.width - 32
+
+        print("📺 [Fake-Stream] Showing elements \(streamDisplayedCount)..<\(streamParsedElements.count)")
+
+        for i in streamDisplayedCount..<streamParsedElements.count {
+            let element = streamParsedElements[i]
+            print("  ├─ Element[\(i)]: \(elementTypeString(element))")
+
+            let view = createView(for: element, containerWidth: containerWidth)
+            view.tag = 1000 + i
+
+            // ⭐️ 恢复：所有元素都走 TypewriterEngine，保持统一的动画节奏
+            if enableTypewriterEffect {
+                view.isHidden = true
+                contentStackView.addArrangedSubview(view)
+                typewriterEngine.enqueue(view: view)
+            } else {
+                contentStackView.addArrangedSubview(view)
+            }
+
+            // 注册 heading
+            if case .heading(let id, _) = element {
+                headingViews[id] = view
+                if id == tocSectionId { tocSectionView = view }
+            }
+        }
+
+        streamDisplayedCount = streamParsedElements.count
+        oldElements = streamParsedElements
+
+        if enableTypewriterEffect {
+            typewriterEngine.start()
+        }
+
+        notifyHeightChange()
+    }
+
+    /// 判断是否为块级元素（保留方法，供后续使用）
+    private func isBlockLevelElement(_ element: MarkdownRenderElement) -> Bool {
+        switch element {
+        case .latex, .table, .codeBlock, .image, .thematicBreak, .rawHTML:
+            return true
+        case .details, .list, .quote:
+            return true
+        case .heading, .attributedText:
+            return false
+        case .custom:
+            return true  // 自定义元素默认作为块级元素
+        }
+    }
+
+    /// 最终完整解析（确保所有元素都正确显示）
+    private func performFinalParse() {
+        let fullText = streamFullText
+
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else { return }
+
+            let config = self.configuration
+            let containerWidth = UIScreen.main.bounds.width - 32
+            let renderer = MarkdownRenderer(configuration: config, containerWidth: containerWidth)
+            let (elements, attachments, tocItems, tocId) = renderer.render(fullText)
+
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+
+                // 检查是否有遗漏的元素
+                if elements.count > self.streamParsedElements.count {
+                    print("🔧 [Fake-Stream] Final parse found \(elements.count - self.streamParsedElements.count) missing elements")
+
+                    // 添加遗漏的元素
+                    let containerWidth = self.bounds.width > 0 ? self.bounds.width : UIScreen.main.bounds.width - 32
+
+                    for i in self.streamParsedElements.count..<elements.count {
+                        let element = elements[i]
+                        let view = self.createView(for: element, containerWidth: containerWidth)
+                        view.tag = 1000 + i
+
+                        if self.enableTypewriterEffect {
+                            view.isHidden = true
+                            self.contentStackView.addArrangedSubview(view)
+                            self.typewriterEngine.enqueue(view: view)
+                        } else {
+                            self.contentStackView.addArrangedSubview(view)
+                        }
+
+                        if case .heading(let id, _) = element {
+                            self.headingViews[id] = view
+                            if id == tocId { self.tocSectionView = view }
+                        }
+                    }
+
+                    self.streamParsedElements = elements
+                    self.streamDisplayedCount = elements.count
+
+                    if self.enableTypewriterEffect {
+                        self.typewriterEngine.start()
+                    }
+                }
+
+                self.imageAttachments = attachments
+                self.tableOfContents = tocItems
+                self.tocSectionId = tocId
+                self.oldElements = elements
+
+                self.notifyHeightChange()
+            }
+        }
+    }
 
     // MARK: - Dynamic Streaming Updates
 
@@ -4606,20 +4604,20 @@ public final class MarkdownViewTextKit: UIView {
         let unit = self.currentStreamingUnit
         // Capture current state to avoid threading issues
         let currentFullText = self.streamFullText
-        
+
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self else { return }
-            
+
             // 1. Tokenize ONLY the new chunk (Optimization)
             let newTokens = self.tokenize(newChunk, unit: unit)
-            
+
             // 2. Update Full Text
             let newFullText = currentFullText + newChunk
-            
+
             // 3. Recalculate Atomic Ranges (Still need full scan for correctness of nested/late-closing tags)
             // Note: This is O(N) but much faster than O(N) tokenization + String allocation
             let newAtomicRanges = self.calculateAtomicRanges(in: newFullText)
-            
+
             DispatchQueue.main.async {
                 guard self.isStreaming else { return }
 
@@ -4637,13 +4635,13 @@ public final class MarkdownViewTextKit: UIView {
 
     private func updateStreamingState(newFullText: String) {
         let unit = self.currentStreamingUnit
-        
+
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self else { return }
 
             let newTokens = self.tokenize(newFullText, unit: unit)
             let newAtomicRanges = self.calculateAtomicRanges(in: newFullText)
-            
+
             DispatchQueue.main.async {
                 guard self.isStreaming else { return }
 
@@ -4655,169 +4653,169 @@ public final class MarkdownViewTextKit: UIView {
                 self.streamAtomicRanges = newAtomicRanges
                 // ⚡️ 同步更新原子区间起始位置索引
                 self.atomicRangeStartSet = Set(newAtomicRanges.map { $0.location })
-                
+
                 var accumulatedLength = 0
                 var newIndex = 0
-                var partialTokenSuffix: String? = nil
-                
+                var partialTokenSuffix: String?
+
                 for (i, token) in newTokens.enumerated() {
                     let tokenLen = token.count
                     let tokenEnd = accumulatedLength + tokenLen
-                    
+
                     if tokenEnd > currentMarkdownCount {
                         if accumulatedLength < currentMarkdownCount {
-                             // Overlap: token started before cursor but ends after
-                             let overlap = currentMarkdownCount - accumulatedLength
-                             partialTokenSuffix = String(token.dropFirst(overlap))
-                             newIndex = i + 1
+                            // Overlap: token started before cursor but ends after
+                            let overlap = currentMarkdownCount - accumulatedLength
+                            partialTokenSuffix = String(token.dropFirst(overlap))
+                            newIndex = i + 1
                         } else {
-                             // Next token starts at or after cursor
-                             newIndex = i
+                            // Next token starts at or after cursor
+                            newIndex = i
                         }
                         break
                     }
                     accumulatedLength += tokenLen
-                    
+
                     // Exact match boundary
                     if tokenEnd == currentMarkdownCount {
                         newIndex = i + 1
                         break
                     }
                 }
-                
+
                 if let suffix = partialTokenSuffix {
                     self.markdown += suffix
                 }
-                
+
                 self.streamTokenIndex = newIndex
             }
         }
     }
-    
+
     /// 智能追加 Token，支持原子区间跳跃
-        private func appendNextTokensAtomic(count: Int) {
-            guard streamTokenIndex < streamTokens.count else {
-                // ⚡️ 流式渲染完成
-                // 1. 先停止 Timer（但不清除脚注缓存）
-                streamTimer?.invalidate()
-                streamTimer = nil
-                isPausedForDisplay = false
+    private func appendNextTokensAtomic(count: Int) {
+        guard streamTokenIndex < streamTokens.count else {
+            // ⚡️ 流式渲染完成
+            // 1. 先停止 Timer（但不清除脚注缓存）
+            streamTimer?.invalidate()
+            streamTimer = nil
+            isPausedForDisplay = false
 
-                // 2. ⚡️ 优化：如果有脚注，则延迟结束流式状态，等待打字机动画完成后渲染脚注
-                //    这样可以确保脚注渲染时仍然能触发外部容器的自动滚动
-                if cachedFootnoteView != nil || !streamParsedFootnotes.isEmpty {
-                    pendingFootnoteRender = true
-                    print("🔖 [Footnotes] Deferred rendering until typewriter animations complete")
-                    // ⚡️ 保持 isStreaming = true，直到脚注渲染完成
-                    // 这样外部容器（如 TableView）仍然会自动滚动
-                    return
-                }
-
-                // 3. 没有脚注，立即结束流式模式
-                isStreaming = false
-
-                // 4. 清理视图缓存（脚注渲染完成后再清理）
-                clearViewCache()
-
-                // 5. ⭐️ 执行最终解析，确保 TOC 等数据完整
-                performFinalParse()
-
-                // 6. 触发完成回调
-                onStreamComplete?()
-                onStreamComplete = nil
-
+            // 2. ⚡️ 优化：如果有脚注，则延迟结束流式状态，等待打字机动画完成后渲染脚注
+            //    这样可以确保脚注渲染时仍然能触发外部容器的自动滚动
+            if cachedFootnoteView != nil || !streamParsedFootnotes.isEmpty {
+                pendingFootnoteRender = true
+                print("🔖 [Footnotes] Deferred rendering until typewriter animations complete")
+                // ⚡️ 保持 isStreaming = true，直到脚注渲染完成
+                // 这样外部容器（如 TableView）仍然会自动滚动
                 return
             }
-            
-            // 当前 Markdown 的长度（光标位置）
-            let currentLength = (markdown as NSString).length
 
-            // 1. 检查当前光标是否位于某个原子区间的"起点"
-            // ⚡️ 性能优化：先用 O(1) 的 Set 查找，再用 O(N) 的数组查找具体 range
-            if atomicRangeStartSet.contains(currentLength),
-               let atomicRange = streamAtomicRanges.first(where: { $0.location == currentLength }) {
-                
-                // 🎯 命中原子区间！
-                // 直接截取这整个区间的内容
-                let fullTextInfo = streamFullText as NSString
-                // 确保 range 不越界（理论上预计算的不会越界，但安全第一）
-                if atomicRange.upperBound <= fullTextInfo.length {
-                    let chunk = fullTextInfo.substring(with: atomicRange)
-                    
-                    // 一次性追加整个公式/图片字符串
-                    markdown += chunk
-                    
-                    // ⏩ 关键：我们需要更新 streamTokenIndex，跳过这些 token
-                    // 因为 tokens 是碎片化的，我们需要计算跳过了多少字符
-                    var skippedLength = 0
-                    let targetLength = atomicRange.length
-                    
-                    // 向前推进 token index，直到跳过的字符总数 >= 原子区间的长度
-                    while streamTokenIndex < streamTokens.count {
-                        let tokenLen = streamTokens[streamTokenIndex].count
-                        skippedLength += tokenLen
-                        streamTokenIndex += 1
-                        
-                        if skippedLength >= targetLength {
-                            break
-                        }
+            // 3. 没有脚注，立即结束流式模式
+            isStreaming = false
+
+            // 4. 清理视图缓存（脚注渲染完成后再清理）
+            clearViewCache()
+
+            // 5. ⭐️ 执行最终解析，确保 TOC 等数据完整
+            performFinalParse()
+
+            // 6. 触发完成回调
+            onStreamComplete?()
+            onStreamComplete = nil
+
+            return
+        }
+
+        // 当前 Markdown 的长度（光标位置）
+        let currentLength = (markdown as NSString).length
+
+        // 1. 检查当前光标是否位于某个原子区间的"起点"
+        // ⚡️ 性能优化：先用 O(1) 的 Set 查找，再用 O(N) 的数组查找具体 range
+        if atomicRangeStartSet.contains(currentLength),
+           let atomicRange = streamAtomicRanges.first(where: { $0.location == currentLength }) {
+
+            // 🎯 命中原子区间！
+            // 直接截取这整个区间的内容
+            let fullTextInfo = streamFullText as NSString
+            // 确保 range 不越界（理论上预计算的不会越界，但安全第一）
+            if atomicRange.upperBound <= fullTextInfo.length {
+                let chunk = fullTextInfo.substring(with: atomicRange)
+
+                // 一次性追加整个公式/图片字符串
+                markdown += chunk
+
+                // ⏩ 关键：我们需要更新 streamTokenIndex，跳过这些 token
+                // 因为 tokens 是碎片化的，我们需要计算跳过了多少字符
+                var skippedLength = 0
+                let targetLength = atomicRange.length
+
+                // 向前推进 token index，直到跳过的字符总数 >= 原子区间的长度
+                while streamTokenIndex < streamTokens.count {
+                    let tokenLen = streamTokens[streamTokenIndex].count
+                    skippedLength += tokenLen
+                    streamTokenIndex += 1
+
+                    if skippedLength >= targetLength {
+                        break
                     }
-                    
-                    // 处理自动滚动
-                    handleAutoScroll()
-                    return // 本次 Tick 结束，等待下一次 Timer
                 }
-            }
-            
-            // 2. 如果没有命中原子区间，走普通逻辑
-            var nextChunk = ""
-            var tokensAdded = 0
-            
-            // 循环取出 count 个 token
-            while streamTokenIndex < streamTokens.count && tokensAdded < count {
-                let token = streamTokens[streamTokenIndex]
-                
-                // 🛑 二次检查：在普通追加的过程中，会不会"误入"原子区间的内部？
-                // 现在的逻辑是：如果普通追加的 token 开始位置正好是原子区间的起点，我们应该停止普通追加，
-                // 留给下一次 Timer tick 去处理上面的 "if let atomicRange" 逻辑。
-                let nextCursor = currentLength + (nextChunk as NSString).length
-                // ⚡️ 性能优化：用 O(1) 的 Set 查找替代 O(N) 的数组遍历
-                if atomicRangeStartSet.contains(nextCursor) {
-                    // 撞到了原子区间的门口，立即停止，把机会留给下一次循环处理整体输出
-                    break
-                }
-                
-                nextChunk += token
-                streamTokenIndex += 1
-                tokensAdded += 1
-            }
-            
-            markdown += nextChunk
-            handleAutoScroll()
-        }
-        
-        private func handleAutoScroll() {
-            if autoScrollEnabled {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
-                    self?.scrollToBottom(animated: false)
-                }
+
+                // 处理自动滚动
+                handleAutoScroll()
+                return // 本次 Tick 结束，等待下一次 Timer
             }
         }
+
+        // 2. 如果没有命中原子区间，走普通逻辑
+        var nextChunk = ""
+        var tokensAdded = 0
+
+        // 循环取出 count 个 token
+        while streamTokenIndex < streamTokens.count && tokensAdded < count {
+            let token = streamTokens[streamTokenIndex]
+
+            // 🛑 二次检查：在普通追加的过程中，会不会"误入"原子区间的内部？
+            // 现在的逻辑是：如果普通追加的 token 开始位置正好是原子区间的起点，我们应该停止普通追加，
+            // 留给下一次 Timer tick 去处理上面的 "if let atomicRange" 逻辑。
+            let nextCursor = currentLength + (nextChunk as NSString).length
+            // ⚡️ 性能优化：用 O(1) 的 Set 查找替代 O(N) 的数组遍历
+            if atomicRangeStartSet.contains(nextCursor) {
+                // 撞到了原子区间的门口，立即停止，把机会留给下一次循环处理整体输出
+                break
+            }
+
+            nextChunk += token
+            streamTokenIndex += 1
+            tokensAdded += 1
+        }
+
+        markdown += nextChunk
+        handleAutoScroll()
+    }
+
+    private func handleAutoScroll() {
+        if autoScrollEnabled {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+                self?.scrollToBottom(animated: false)
+            }
+        }
+    }
 
     private func tokenize(_ text: String, unit: StreamingUnit) -> [String] {
         switch unit {
         case .character:
             return text.map { String($0) }
-            
+
         case .word, .sentence:
             let nlUnit: NLTokenUnit = unit == .word ? .word : .sentence
             var tokens: [String] = []
-            
+
             let tokenizer = NLTokenizer(unit: nlUnit)
             tokenizer.string = text
-            
+
             var lastEnd = text.startIndex
-            
+
             tokenizer.enumerateTokens(in: text.startIndex..<text.endIndex) { range, _ in
                 if lastEnd < range.lowerBound {
                     tokens.append(String(text[lastEnd..<range.lowerBound]))
@@ -4826,11 +4824,11 @@ public final class MarkdownViewTextKit: UIView {
                 lastEnd = range.upperBound
                 return true
             }
-            
+
             if lastEnd < text.endIndex {
                 tokens.append(String(text[lastEnd..<text.endIndex]))
             }
-            
+
             return tokens
         }
     }
@@ -4841,13 +4839,13 @@ public final class MarkdownViewTextKit: UIView {
             stopStreaming()
             return
         }
-        
+
         let endIndex = min(streamTokenIndex + count, streamTokens.count)
         let chunk = streamTokens[streamTokenIndex..<endIndex].joined()
-        
+
         markdown += chunk
         streamTokenIndex = endIndex
-        
+
         // 自动滚动到底部
         if autoScrollEnabled {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
@@ -5349,7 +5347,7 @@ public final class MarkdownViewTextKit: UIView {
         var elements: [MarkdownRenderElement] = []
         var attachments: [(attachment: MarkdownImageAttachment, urlString: String)] = []
         var tocItems: [MarkdownTOCItem] = []
-        var tocId: String? = nil
+        var tocId: String?
         var parseDuration: Double = 0
 
         // 使用串行队列同步解析，确保顺序
@@ -5805,24 +5803,24 @@ public final class MarkdownViewTextKit: UIView {
             stopStreaming()
             return
         }
-        
+
         var endIndex = min(streamCurrentIndex + chunkSize, streamFullText.count)
-        
+
         // 尝试在空格或换行处断开，更自然
         let searchEnd = min(endIndex + 10, streamFullText.count)
         let startIdx = streamFullText.index(streamFullText.startIndex, offsetBy: endIndex)
         let searchIdx = streamFullText.index(streamFullText.startIndex, offsetBy: searchEnd)
         let searchRange = startIdx..<searchIdx
-        
+
         if let spaceRange = streamFullText.range(of: " ", range: searchRange) {
             endIndex = streamFullText.distance(from: streamFullText.startIndex, to: spaceRange.lowerBound) + 1
         }
-        
+
         let index = streamFullText.index(streamFullText.startIndex, offsetBy: endIndex)
         markdown = String(streamFullText[..<index])
         streamCurrentIndex = endIndex
     }
-    
+
     /// 滚动到底部
     public func scrollToBottom(animated: Bool = true) {
         var scrollView: UIScrollView?
@@ -5834,16 +5832,16 @@ public final class MarkdownViewTextKit: UIView {
             }
             superview = superview?.superview
         }
-        
+
         guard let sv = scrollView else { return }
-        
+
         let bottomOffset = CGPoint(
             x: 0,
             y: max(0, sv.contentSize.height - sv.bounds.height + sv.contentInset.bottom)
         )
         sv.setContentOffset(bottomOffset, animated: animated)
     }
-    
+
     /// 滚动到顶部
     public func scrollToTop(animated: Bool = true) {
         var scrollView: UIScrollView?
@@ -5855,9 +5853,9 @@ public final class MarkdownViewTextKit: UIView {
             }
             superview = superview?.superview
         }
-        
+
         guard let sv = scrollView else { return }
         sv.setContentOffset(CGPoint(x: 0, y: -sv.contentInset.top), animated: animated)
     }
-    
+
 }

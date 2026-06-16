@@ -112,7 +112,7 @@ class ViewController: UIViewController {
         vc.modalPresentationStyle = .fullScreen
         self.present(vc, animated: true, completion: nil)
     }
-    
+
     @objc private func openTableViewDemo() {
         let vc = TableViewStreamingViewController()
         vc.modalPresentationStyle = .fullScreen
@@ -144,4 +144,3 @@ class ViewController: UIViewController {
     }
 
 }
-

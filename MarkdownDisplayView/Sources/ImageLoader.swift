@@ -15,17 +15,17 @@ import Combine
  let imageURL = URL(string: "https://example.com/image.jpg")!
  
  ImageLoader.shared.loadImage(from: imageURL)
-     .sink(receiveValue: { [weak self] image in
-         self?.imageView.image = image
-     })
-     .store(in: &cancellables)
+ .sink(receiveValue: { [weak self] image in
+ self?.imageView.image = image
+ })
+ .store(in: &cancellables)
  */
 
 /// An Image loader
 public struct ImageLoader {
     public static let shared = ImageLoader()
     private let cache = ImageCacheManager.shared
-    
+
     /// Load image from url.
     /// - Parameter url: image url
     /// - Returns: An

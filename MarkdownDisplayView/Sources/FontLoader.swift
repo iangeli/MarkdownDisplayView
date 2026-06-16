@@ -85,10 +85,10 @@ public final class FontLoader {
 
     /// 获取资源 bundle
     private func getResourceBundle() -> Bundle? {
-        #if SWIFT_PACKAGE
+#if SWIFT_PACKAGE
         // SPM 环境：使用 Bundle.module
         return Bundle.module
-        #else
+#else
         // CocoaPods 环境：从 resource_bundles 获取
         let bundleName = "MarkdownDisplayKit"
 
@@ -106,7 +106,7 @@ public final class FontLoader {
 
         // 最后尝试直接使用类的 bundle
         return Bundle(for: FontLoader.self)
-        #endif
+#endif
     }
 
     /// 注册单个字体

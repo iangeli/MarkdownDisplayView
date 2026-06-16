@@ -266,7 +266,7 @@ final class MarkdownStreamBuffer {
     /// 用于决定是否可以在 \n（而非 \n\n）处提前提交模块
     private func isPlainText(_ text: String) -> Bool {
         let markdownMarkers = ["#", "> ", "```", "---", "***", "- ", "* ", "+ ", "| ",
-                                "1. ", "2. ", "3. ", "![", "[$"]
+                               "1. ", "2. ", "3. ", "![", "[$"]
         for marker in markdownMarkers {
             if text.contains(marker) { return false }
         }
@@ -308,9 +308,9 @@ final class MarkdownStreamBuffer {
             let isWithinSearchRange = currentPosition >= startPosition
 
             let isH1 = isOutsideCodeBlock && isWithinSearchRange
-                && trimmedLine.hasPrefix("# ") && !trimmedLine.hasPrefix("## ")
+            && trimmedLine.hasPrefix("# ") && !trimmedLine.hasPrefix("## ")
             let isH2 = isOutsideCodeBlock && isWithinSearchRange
-                && trimmedLine.hasPrefix("## ") && !trimmedLine.hasPrefix("### ")
+            && trimmedLine.hasPrefix("## ") && !trimmedLine.hasPrefix("### ")
 
             // ⭐️ 关键修复：只收集 startPosition 之后的标题
             // 这样避免重复处理已经解析过的标题

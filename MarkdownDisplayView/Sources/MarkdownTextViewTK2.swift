@@ -221,7 +221,7 @@ class MarkdownTextViewTK2: UIView, UIGestureRecognizerDelegate {
             for textLine in fragment.textLineFragments {
                 let lineRange = textLine.characterRange
 
-                attrString.enumerateAttribute(.attachment, in: NSRange(location: lineRange.location, length: lineRange.length)) { value, range, stop in
+                attrString.enumerateAttribute(.attachment, in: NSRange(location: lineRange.location, length: lineRange.length)) { value, range, _ in
                     guard let attachment = value as? NSTextAttachment else { return }
 
                     // 检查是否支持 viewProvider (例如 MarkdownTableAttachment)
@@ -461,8 +461,8 @@ extension MarkdownTextViewTK2 {
 
             let interval = max(1, typewriterHeightUpdateInterval)
             let shouldUpdateLayout = segment.string.contains("\n")
-                || (endIndex - lastHeightUpdateIndex) >= interval
-                || endIndex >= length
+            || (endIndex - lastHeightUpdateIndex) >= interval
+            || endIndex >= length
 
             if shouldUpdateLayout {
                 lastHeightUpdateIndex = endIndex

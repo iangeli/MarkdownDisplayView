@@ -12,7 +12,7 @@ struct ChatMessage {
     let id = UUID()
     var content: String
     let isUser: Bool
-    
+
     // 状态控制
     var isStreaming: Bool = false // 是否正在打字
     var isLoading: Bool = false   // 是否正在思考(网络请求中)
@@ -23,23 +23,23 @@ struct ChatMessage {
 class TypingIndicatorView: UIView {
     private let stackView = UIStackView()
     private var dots: [UIView] = []
-    
+
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupUI()
     }
-    
+
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
-    
+
     private func setupUI() {
             stackView.axis = .horizontal
             stackView.spacing = 4
             stackView.distribution = .fillEqually
             stackView.translatesAutoresizingMaskIntoConstraints = false
             addSubview(stackView)
-            
+
             // 创建3个点
             for _ in 0..<3 {
                 let dot = UIView()
@@ -52,7 +52,7 @@ class TypingIndicatorView: UIView {
                 dots.append(dot)
                 stackView.addArrangedSubview(dot)
             }
-            
+
             // 关键修改：移除 width=30 的强约束，改用自适应
             // 关键修改：减小内部 Padding，避免和 Cell 外部的 20pt 高度冲突
             NSLayoutConstraint.activate([
@@ -64,10 +64,10 @@ class TypingIndicatorView: UIView {
                 stackView.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor),
                 stackView.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor)
             ])
-            
+
             startAnimating()
         }
-    
+
     func startAnimating() {
         for (index, dot) in dots.enumerated() {
             // 简单的关键帧动画，实现波浪效果
@@ -80,12 +80,11 @@ class TypingIndicatorView: UIView {
             })
         }
     }
-    
+
     func stopAnimating() {
         dots.forEach { $0.layer.removeAllAnimations() }
     }
 }
-
 
 class ChatMarkdownCell: UITableViewCell {
 
@@ -112,7 +111,7 @@ class ChatMarkdownCell: UITableViewCell {
     var isStreaming: Bool {
         return isCurrentlyStreaming
     }
-    
+
     // MARK: - Constraints Groups
     // 1. 对齐约束 (控制左右)
     private var alignConstraints: [NSLayoutConstraint] = []
@@ -120,27 +119,27 @@ class ChatMarkdownCell: UITableViewCell {
     private var loadingConstraints: [NSLayoutConstraint] = []
     // 3. 内容 模式下的约束 (只由 MarkdownView 撑开高度)
     private var contentConstraints: [NSLayoutConstraint] = []
-    
+
     // MARK: - Init
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         setupUI()
     }
-    
+
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    
+
     // MARK: - Setup UI
     private func setupUI() {
         selectionStyle = .none
         backgroundColor = .clear
         contentView.backgroundColor = .clear
-        
+
         // --- 添加视图 ---
         bgView.translatesAutoresizingMaskIntoConstraints = false
         bgView.layer.cornerRadius = 16 // 圆角稍微大一点好看
         bgView.layer.cornerCurve = .continuous
         contentView.addSubview(bgView)
-        
+
         markdownView.translatesAutoresizingMaskIntoConstraints = false
         markdownView.backgroundColor = .clear
         markdownView.onHeightChange = { [weak self] newHeight in
@@ -162,11 +161,11 @@ class ChatMarkdownCell: UITableViewCell {
         markdownView.setContentCompressionResistancePriority(.required, for: .vertical)
         typingIndicator.translatesAutoresizingMaskIntoConstraints = false
         bgView.addSubview(typingIndicator)
-        
+
         // --- 1. 基础约束 (始终激活) ---
                 let bgTop = bgView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 6)
                 let bgBottom = bgView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -6)
-                
+
                 // ⭐️ 修复核心：增加最小尺寸保护
                 // 无论里面有没有字，气泡至少要有 40x40 的大小，防止塌陷成“细长条”
                 let minWidth = bgView.widthAnchor.constraint(greaterThanOrEqualToConstant: 44)
@@ -196,7 +195,7 @@ class ChatMarkdownCell: UITableViewCell {
             userTrailing,  // [2] User: trailing
             userWidth      // [3] User: width
         ]
-        
+
         // --- 3. 准备 内容模式 约束 (不激活) ---
         // 只有在显示文本时，才激活这组，让文字撑开气泡
         contentConstraints = [
@@ -205,7 +204,7 @@ class ChatMarkdownCell: UITableViewCell {
             markdownView.leadingAnchor.constraint(equalTo: bgView.leadingAnchor, constant: 16),
             markdownView.trailingAnchor.constraint(equalTo: bgView.trailingAnchor, constant: -16)
         ]
-        
+
         // --- 4. 准备 Loading模式 约束 (不激活) ---
         // 只有在Loading时，才激活这组，让动画撑开气泡
         loadingConstraints = [
@@ -239,13 +238,7 @@ class ChatMarkdownCell: UITableViewCell {
             self?.onUserInteraction?()
         }
     }
-    
-    override func layoutSubviews() {
-        super.layoutSubviews()
 
-     
-    }
-    
     // MARK: - Configuration (修复核心)
     func configure(with message: ChatMessage) {
 
@@ -309,7 +302,7 @@ class ChatMarkdownCell: UITableViewCell {
             }
         }
     }
-    
+
     // 修改方法签名，增加 onStart 回调参数
     func startStreaming(text: String, onStart: (() -> Void)? = nil, completion: @escaping () -> Void) {
 
@@ -367,7 +360,7 @@ class ChatMarkdownCell: UITableViewCell {
         // ⭐️ 使用新 API：直接显示完整文本，无需重新解析
         markdownView.resumeDisplayUpdates()
     }
-    
+
     func stopStreaming() {
         markdownView.stopStreaming()
         // ⭐️ 停止时清除流式标记
@@ -460,17 +453,17 @@ class TableViewStreamingViewController: UIViewController {
     // ⭐️ 自动滚动控制
     private var shouldAutoScroll: Bool = true  // 是否应该自动滚动
     private let autoScrollThreshold: CGFloat = 100  // 距离底部多少时认为"在底部"
-    
+
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemBackground
         setupTableView()
         setupInputArea()
-        
+
         // 初始欢迎语
         messages.append(ChatMessage(content: "你好！请点击下方按钮开始测试。", isUser: false))
     }
-    
+
     private func setupTableView() {
         view.addSubview(tableView)
         tableView.translatesAutoresizingMaskIntoConstraints = false
@@ -484,12 +477,12 @@ class TableViewStreamingViewController: UIViewController {
         tableView.setContentHuggingPriority(.required, for: .vertical)
         tableView.setContentCompressionResistancePriority(.required, for: .vertical)
         NSLayoutConstraint.activate([
-            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor,constant: 100),
+            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 100),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -60) // 留出输入框位置
         ])
-        
+
         let closeButton = UIButton(type: .system)
         closeButton.setTitle("Close", for: .normal)
         closeButton.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
@@ -497,7 +490,6 @@ class TableViewStreamingViewController: UIViewController {
         closeButton.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(closeButton)
 
-        
         let stopButton = UIButton(type: .system)
         stopButton.setTitle("Stop", for: .normal)
         stopButton.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
@@ -509,18 +501,18 @@ class TableViewStreamingViewController: UIViewController {
                 equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
             closeButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             closeButton.heightAnchor.constraint(equalToConstant: 44),
-            
+
             stopButton.topAnchor.constraint(
                 equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
             stopButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            stopButton.heightAnchor.constraint(equalToConstant: 44),
+            stopButton.heightAnchor.constraint(equalToConstant: 44)
         ])
     }
-    
+
     @objc private func dismissSelf() {
         self.dismiss(animated: true, completion: nil)
     }
-    
+
     @objc private func stopStreaming() {
         print("[FOOTNOTE_DEBUG] ⛔️ stopStreaming button pressed!")
         // 停止真流式
@@ -540,7 +532,7 @@ class TableViewStreamingViewController: UIViewController {
             }
         }
     }
-    
+
     private func setupInputArea() {
         // 假流式按钮
         let button = UIButton(type: .system)
@@ -595,7 +587,7 @@ class TableViewStreamingViewController: UIViewController {
             smartStreamButton.heightAnchor.constraint(equalToConstant: 44)
         ])
     }
-    
+
     // 在 ChatViewController 类中
 
     // MARK: - Markdown 分割工具
@@ -928,41 +920,41 @@ class TableViewStreamingViewController: UIViewController {
     @objc private func handleSend() {
             guard !isSending else { return }
             isSending = true
-            
+
             let userText = "请给我写一段 Markdown。"
             let aiResponseText = demoMarkdown // 假设这是那个长文本
-            
+
             // 1. 用户消息... (省略)
             let userMsg = ChatMessage(content: userText, isUser: true)
             messages.append(userMsg)
             insertRowAndScroll(animated: true)
-            
+
             // 2. 插入 Bot Loading... (省略)
             var botMsg = ChatMessage(content: "", isUser: false, isStreaming: false, isLoading: true)
             messages.append(botMsg)
             let botIndexPath = IndexPath(row: messages.count - 1, section: 0)
             tableView.insertRows(at: [botIndexPath], with: .bottom)
             scrollToBottom(animated: true)
-            
+
             // 3. 模拟网络请求
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in
                 guard let self = self else { return }
                 self.isSending = false
-                
+
                 // --- 更新数据源状态 ---
                 self.messages[botIndexPath.row].isLoading = false
                 self.messages[botIndexPath.row].isStreaming = true
                 self.messages[botIndexPath.row].content = ""
                 self.isSending = false
-                
+
                 // --- 获取 Cell ---
                 if let cell = self.tableView.cellForRow(at: botIndexPath) as? ChatMarkdownCell {
-                    
+
                     // ❌ 删掉这行！不要调用 configure！
                     // cell.configure(with: self.messages[botIndexPath.row])
                     // 原因：调用 configure 会立即隐藏 Loading 动画，导致接下来的几秒钟白屏。
                     // 我们现在的策略是：保持当前 UI (Loading状态) 不变，直接 startStreaming。
-                    
+
                     // 绑定高度回调
                     // ⚠️ 使用数据源的 isStreaming 状态，而不是 Cell 的状态
                     cell.onContentHeightChanged = { [weak self] in
@@ -982,7 +974,7 @@ class TableViewStreamingViewController: UIViewController {
                             self.scrollToBottom(animated: false)
                         }
                     }
-                    
+
                     // 开始流式输出 (Cell 内部会在准备好后自动切换 UI)
                             cell.startStreaming(
                                 text: aiResponseText,
@@ -1026,23 +1018,23 @@ class TableViewStreamingViewController: UIViewController {
 
     // 简单的防连点标记
     private var isSending = false
-    
+
     private func startBotResponse() {
         // 1. 先插入一个内容为空的 Bot 消息
         // isStreaming = true 告诉 Cell 不要直接渲染 content，而是等我们手动调用 stream
         let botMsg = ChatMessage(content: "", isUser: false, isStreaming: true)
         messages.append(botMsg)
-        
+
         let indexPath = IndexPath(row: messages.count - 1, section: 0)
         tableView.insertRows(at: [indexPath], with: .fade)
         scrollToBottom(animated: true)
-        
+
         // 2. 获取刚才插入的 Cell 实例
         // 注意：必须 layout 之后才能拿到 cell，否则可能为 nil
         tableView.layoutIfNeeded()
-        
+
         guard let cell = tableView.cellForRow(at: indexPath) as? ChatMarkdownCell else { return }
-        
+
         // 3. 配置高度变化回调
         // ⚠️ 使用数据源的 isStreaming 状态，而不是 Cell 的状态
         cell.onContentHeightChanged = { [weak self] in
@@ -1058,7 +1050,7 @@ class TableViewStreamingViewController: UIViewController {
                 self.scrollToBottom(animated: false)
             }
         }
-        
+
         // 4. 开始流式输出
         // 实际开发中，这里你会监听网络 socket/SSE 的数据包，不断调用 markdownView.append()
         // 这里使用工具类自带的模拟器
@@ -1068,17 +1060,17 @@ class TableViewStreamingViewController: UIViewController {
             self?.messages[indexPath.row].isStreaming = false
             self?.isSending = false
         }
-        
+
         // 为了确保模型数据同步（如果 Cell 复用导致数据丢失），
         // 理想情况下你应该在 socket 收到 chunk 时同时更新 messages[index].content
     }
-    
+
     private func insertRowAndScroll() {
         let indexPath = IndexPath(row: messages.count - 1, section: 0)
         tableView.insertRows(at: [indexPath], with: .bottom)
         scrollToBottom(animated: true)
     }
-    
+
     private func scrollToBottom(animated: Bool) {
         // ⭐️ 关键修复：只有当允许自动滚动时才执行
         guard !messages.isEmpty, shouldAutoScroll else { return }

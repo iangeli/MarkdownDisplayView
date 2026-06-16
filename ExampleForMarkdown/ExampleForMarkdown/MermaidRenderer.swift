@@ -361,7 +361,6 @@ final class MermaidWebView: UIView, WKNavigationDelegate, WKScriptMessageHandler
     """
 }
 
-
 // MARK: - Convenience Registration
 
 public extension MarkdownCustomExtensionManager {
@@ -369,6 +368,6 @@ public extension MarkdownCustomExtensionManager {
     /// 注册 Mermaid 渲染器
     func registerMermaidRenderer() {
         register(codeBlockRenderer: MermaidRenderer())
-        //print("✅ [Mermaid] Mermaid renderer registered")
+        // print("✅ [Mermaid] Mermaid renderer registered")
     }
 }

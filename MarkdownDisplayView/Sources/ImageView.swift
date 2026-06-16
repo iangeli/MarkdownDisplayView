@@ -13,20 +13,20 @@ import Combine
 @objc final public class ImageView: UIImageView {
 
     private var cancellables = Set<AnyCancellable>()
-    
+
     public override init(frame: CGRect) {
         super.init(frame: frame)
     }
-    
+
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
-    
+
     /// Loads an image from the specified URL and sets it as the image of the image view.
     /// - Parameters:
     ///   - url: The URL of the image to load.
     ///   - placeHolder: An optional placeholder image to display while the image is being loaded.
-    @MainActor public func image(with url: String,placeHolder: UIImage?) {
+    @MainActor public func image(with url: String, placeHolder: UIImage?) {
         self.image = placeHolder
         var urlString = ""
         if url.hasSuffix(".png") || url.hasSuffix(".jpg") || url.hasSuffix(".jpeg") {
@@ -48,7 +48,7 @@ import Combine
         }
         ImageLoader.shared.loadImage(from: imageURL)
             .sink(receiveValue: { [weak self] url_image in
-                if url_image != nil,url_image?.size ?? .zero != .zero {
+                if url_image != nil, url_image?.size ?? .zero != .zero {
                     self?.image = url_image
                 }
             })
@@ -60,14 +60,14 @@ import Combine
     ///   - url: The URL of the image to load.
     ///   - placeHolder: An optional placeholder image to display while the image is being loaded.
     ///   - loadFinished: Load finished callback.
-    public func image(with url: String,placeHolder: UIImage?,loadFinished: @escaping (UIImage?) -> Void) {
+    public func image(with url: String, placeHolder: UIImage?, loadFinished: @escaping (UIImage?) -> Void) {
         self.image = placeHolder
         guard let imageURL = URL(string: url) else {
             return
         }
         ImageLoader.shared.loadImage(from: imageURL)
             .sink(receiveValue: { [weak self] url_image in
-                if url_image != nil,url_image?.size ?? .zero != .zero  {
+                if url_image != nil, url_image?.size ?? .zero != .zero {
                     self?.image = url_image
                     loadFinished(url_image)
                 }
@@ -76,7 +76,7 @@ import Combine
     }
 }
 
-//extension ImageView {
+// extension ImageView {
 //    public func loadGif(from path: String) {
 //        DispatchQueue.global().async {
 //            let cachedKey = NSString(string: path)
@@ -96,9 +96,9 @@ import Combine
 //            }
 //        }
 //    }
-//}
+// }
 //
-//extension UIImage {
+// extension UIImage {
 //    
 //    public class func gif(from path: String) -> UIImage? {
 //        guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else {
@@ -233,4 +233,4 @@ import Combine
 //
 //        return animation
 //    }
-//}
+// }

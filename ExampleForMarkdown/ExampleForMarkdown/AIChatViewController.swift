@@ -82,8 +82,8 @@ private enum AIChatConfigLoader {
         if let bundleURL = Bundle.main.url(forResource: "Config.local", withExtension: "json") {
             return bundleURL
         }
-//Config.local.json 结构如下
-//{
+// Config.local.json 结构如下
+// {
 //  "host": "https://api.deepseek.com",
 //  "path": "/chat/completions",
 //  "apiKey": "",
@@ -92,7 +92,7 @@ private enum AIChatConfigLoader {
 //  "temperature": 0.7,
 //  "stream": true,
 //  "timeoutSeconds": 30
-//}
+// }
 //
         let documentURL = FileManager.default
             .urls(for: .documentDirectory, in: .userDomainMask)
@@ -1028,7 +1028,7 @@ final class AIChatMessageCell: UITableViewCell {
         bubbleView.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(bubbleView)
         var config = MarkdownConfiguration.default
-        
+
         config.typewriterTextMode = .append
         config.typewriterHeightUpdateInterval = 20
         config.streamMinModuleLength = 10
@@ -1129,4 +1129,3 @@ final class AIChatMessageCell: UITableViewCell {
         hasStartedStreaming = false
     }
 }
-

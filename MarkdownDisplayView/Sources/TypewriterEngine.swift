@@ -118,9 +118,9 @@ class TypewriterEngine {
         // ⭐️ 合并两个版本：使用前缀匹配（更灵活），并保留脚注容器检查
         // ⭐️ 注意：CodeBlockContainer 不再作为原子块，允许内部 MarkdownTextViewTK2 逐字显示
         let isAtomicBlock = (view is UIImageView) ||
-                            (view.accessibilityIdentifier?.hasPrefix("LatexContainer") == true) ||
-                            (view.accessibilityIdentifier?.hasPrefix("latex_") == true) ||
-                            (view.accessibilityIdentifier == "FootnoteContainer")
+        (view.accessibilityIdentifier?.hasPrefix("LatexContainer") == true) ||
+        (view.accessibilityIdentifier?.hasPrefix("latex_") == true) ||
+        (view.accessibilityIdentifier == "FootnoteContainer")
         if view.subviews.count > 0 && !isAtomicBlock {
             print("[TYPEWRITER] 📦 递归容器: \(type(of: view)), 子视图数: \(view.subviews.count), 子视图类型: \(view.subviews.map { type(of: $0) })")
             for subview in view.subviews {
@@ -448,8 +448,7 @@ class TypewriterEngine {
            index < text.count,
            let charIndex = text.index(text.startIndex, offsetBy: index, limitedBy: text.endIndex) {
             let char = text[charIndex]
-            if "，,、".contains(char) { delay += 0.03 }
-            else if "。！？!?;；\n".contains(char) { delay += 0.08 }
+            if "，,、".contains(char) { delay += 0.03 } else if "。！？!?;；\n".contains(char) { delay += 0.08 }
         }
         return delay + Double.random(in: 0...0.005)
     }

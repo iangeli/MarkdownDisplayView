@@ -49,7 +49,6 @@ public struct MarkdownPreparedContent {
     }
 }
 
-
 /// 外部可见的主渲染器，不直接依赖 swift-markdown
 public final class MarkdownRenderer {
 
@@ -77,8 +76,8 @@ public final class MarkdownRenderer {
     ) {
         // 1. 预处理：修复常见坏格式（如表格中断）
         let normalizedMarkdown = configuration.autoFixMalformedTables
-            ? normalizeMalformedTables(in: markdown)
-            : markdown
+        ? normalizeMalformedTables(in: markdown)
+        : markdown
 
         // 2. 预处理：识别自定义语法并替换为占位符
         let (preprocessedMarkdown, customDataMap) = preprocessCustomSyntax(in: normalizedMarkdown)
@@ -405,7 +404,7 @@ public final class MarkdownRenderer {
                 print("🔷[MDEXT] checking attributedText: '\(text.prefix(50))...'")
 
                 // 查找文本中位置最靠前的占位符
-                var foundPlaceholder: (placeholder: String, data: CustomElementData, position: Int)? = nil
+                var foundPlaceholder: (placeholder: String, data: CustomElementData, position: Int)?
                 for (placeholder, data) in customDataMap {
                     if let range = text.range(of: placeholder) {
                         let position = text.distance(from: text.startIndex, to: range.lowerBound)

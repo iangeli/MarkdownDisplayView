@@ -20,7 +20,7 @@ class MarkdownExampleViewController: UIViewController {
     }
 
     private func setupUI() {
-        
+
         self.view.backgroundColor = .white
         let titleLabel = UILabel()
         titleLabel.font = .systemFont(ofSize: 18, weight: .semibold)
@@ -28,7 +28,7 @@ class MarkdownExampleViewController: UIViewController {
         titleLabel.backgroundColor = .systemBackground
         titleLabel.textColor = .systemBlue
         view.addSubview(titleLabel)
-        
+
         let backButton = UIButton(type: .system)
         backButton.setTitle("返回目录", for: .normal)
         backButton.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
@@ -65,7 +65,7 @@ class MarkdownExampleViewController: UIViewController {
                 equalTo: closeButton.bottomAnchor, constant: 8),
             scrollableMarkdownView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollableMarkdownView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            scrollableMarkdownView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            scrollableMarkdownView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
 
         // 设置链接点击回调
@@ -73,7 +73,7 @@ class MarkdownExampleViewController: UIViewController {
             self?.handleLinkTap(url)
         }
         scrollableMarkdownView.onImageTap = { imageURL in
-            //获取图片,如果已经加载出来
+            // 获取图片,如果已经加载出来
             _ = ImageCacheManager.shared.image(for: imageURL)
         }
         scrollableMarkdownView.onTOCItemTap = { item in
@@ -84,7 +84,7 @@ class MarkdownExampleViewController: UIViewController {
     @objc private func dismissSelf() {
         dismiss(animated: true, completion: nil)
     }
-    
+
     @objc private func backToMenus() {
         scrollableMarkdownView.backToTableOfContentsSection()
     }
@@ -377,7 +377,7 @@ let sampleMarkdown = """
     下面的段落（中间有两个空行）。
 
     ---
-    
+
     # 四、链接测试
 
     ## 4.1 基础链接
@@ -455,7 +455,7 @@ let sampleMarkdown = """
         | 1 | 第一项 | 这是第一项的描述文本 |
         | 2 | 第二项 | 这是第二项的描述文本 |
         | 3 | 第三项 | 这是第三项的描述文本 |
-    
+
     - 第二项
 
         ```swift
@@ -467,9 +467,9 @@ let sampleMarkdown = """
         let user = User(id: 1, name: "Alice")
         print(user)
         ```
-    
+
     - 第三项
-        
+
             $$\\mathcal{F}(\\omega) = \\int_{-\\infty}^{\\infty} f(t) e^{-i\\omega t} dt$$
 
     ## 6.2 无序列表嵌套（多层级）
@@ -585,7 +585,7 @@ let sampleMarkdown = """
     > 引用中的公式
     >
     > $$\\mathcal{F}(\\omega) = \\int_{-\\infty}^{\\infty} f(t) e^{-i\\omega t} dt$$
-        
+
     ---
 
     # 八、代码测试
@@ -605,12 +605,12 @@ let sampleMarkdown = """
     class ViewController: UIViewController {
         override func viewDidLoad() {
             super.viewDidLoad()
-            
+
             let label = UILabel()
             label.text = "Hello, World!"
             view.addSubview(label)
         }
-        
+
         func greet(name: String) -> String {
             return "Hello, \\(name)!"
         }
@@ -683,7 +683,7 @@ let sampleMarkdown = """
     ```swift
     let veryLongVariableName = "This is a very long string that should test horizontal scrolling or wrapping in code blocks when displayed on mobile devices"
     ```
-    
+
     ---
 
     # 九、表格测试
@@ -825,7 +825,7 @@ let sampleMarkdown = """
     [video:video]
 
     视频支持自动生成缩略图和时长显示。
-    
+
     ## 12.2 Mermaid
 
     支持 Mermaid 语法渲染各类图表：
@@ -859,7 +859,7 @@ let sampleMarkdown = """
           视频播放
           Mermaid图表
           更多...
-    ```    
+    ```
 
     ---
 
@@ -880,9 +880,9 @@ let sampleMarkdown = """
     ## 13.3 引用中的复杂内容
 
     > 这是一段引用，包含 **粗体**、*斜体*、`代码`。
-    > 
+    >
     > 还包含 [链接](https://apple.com) 和脚注[^quote]。
-    > 
+    >
     > - 以及列表项
     > - 和更多内容
 
