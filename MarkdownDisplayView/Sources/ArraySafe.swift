@@ -7,7 +7,7 @@
 
 import Foundation
 
-public extension Array {
+extension Array {
 
     /// 数组越界防护
     subscript(safe idx: Index) -> Element? {

@@ -156,7 +156,7 @@ extension HistoryMDViewController: UITableViewDataSource, UITableViewDelegate {
         ) as? MarkdownHistoryCell else {
             return UITableViewCell(style: .default, reuseIdentifier: "fallback")
         }
-        cell.configure(markdown: messages[safe: indexPath.row] ?? "")
+        cell.configure(markdown: messages[indexPath.row])
 
         cell.onContentHeightChange = { [weak self, weak tableView, weak cell] contentHeight in
             guard let self, let tableView, let cell else { return }

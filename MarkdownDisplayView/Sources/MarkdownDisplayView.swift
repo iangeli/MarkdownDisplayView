@@ -41,7 +41,7 @@ public final class MarkdownViewTextKit: UIView {
     }()
 
     // 配置开关
-    public var enableTypewriterEffect: Bool = true
+    public var enableTypewriterEffect: Bool = false
 
     public func updateTypewriterSpeed(charsPerStep: Int? = nil,
                                       baseDuration: TimeInterval? = nil,
@@ -62,40 +62,14 @@ public final class MarkdownViewTextKit: UIView {
 
     public var markdown: String = "" {
         didSet {
-            // 🔍 性能监控：记录渲染开始时间
-            if !isStreaming {
-                renderStartTime = CFAbsoluteTimeGetCurrent()
-                logger("🔍 [Perf] ========== Markdown Set ==========")
-            }
             scheduleRerender()
         }
     }
 
     /// 直接显示由 `MarkdownRenderer.prepare(_:)` 生成的预渲染内容，跳过 Markdown 字符串解析。
     @MainActor
-    public func setPreparedContent(_ preparedContent: MarkdownPreparedContent) {
-        resetForReuse()
-
-        renderStartTime = CFAbsoluteTimeGetCurrent()
-        let containerWidth = preparedContent.preparedWidth
-
-        tableOfContents = preparedContent.tableOfContents
-        tocSectionId = preparedContent.tocSectionId
-        imageAttachments = preparedContent.imageAttachments
-        cachedContainerWidth = containerWidth
-        parseCache.cachedElements = preparedContent.elements
-        parseCache.cachedAttachments = preparedContent.imageAttachments
-        parseCache.cachedTOCItems = preparedContent.tableOfContents
-        parseCache.tocSectionId = preparedContent.tocSectionId
-
-        updateViews(
-            newElements: preparedContent.elements,
-            footnotes: [],
-            containerWidth: containerWidth,
-            parseDuration: 0,
-            perfStartTime: renderStartTime,
-            precalculatedTextHeights: preparedContent.fixedTextHeights
-        )
+    public func setPreparedContent(_ content: MarkdownPreparedContent, containerWidth: CGFloat) {
+        updateViews(content: content, containerWidth: containerWidth)
     }
 
     public var onLinkTap: ((URL) -> Void)?
@@ -178,11 +152,6 @@ public final class MarkdownViewTextKit: UIView {
     /// 占位视图（用于预留离屏内容空间，避免布局跳动）
     private var placeholderView: UIView?
 
-    // ⚡️ Performance Monitoring
-    private var renderCosts: [String: Double] = [:]
-    /// 记录渲染开始时间（从设置 markdown 属性开始）
-    private var renderStartTime: CFAbsoluteTime = 0
-
     // MARK: - 增量解析缓存（流式渲染性能优化）
 
     /// 解析缓存结构体
@@ -223,23 +192,6 @@ public final class MarkdownViewTextKit: UIView {
 
     /// 流式文本总长度
     private var streamTotalTextLength: Int = 0
-
-    private func recordCost(for type: String, duration: Double) {
-        renderCosts[type, default: 0] += duration
-    }
-
-    private func printRenderCosts(totalDuration: Double) {
-        guard !renderCosts.isEmpty else { return }
-        logger("\n--- 📊 UI Render Performance (Total: \(String(format: "%.4f", totalDuration))sÅ) ---")
-        let sortedCosts = renderCosts.sorted { $0.value > $1.value }
-        for (type, cost) in sortedCosts {
-            let percentage = (cost / totalDuration) * 100
-            if cost > 0.0005 { // Filter out negligible costs (< 0.5ms)
-                logger(String(format: "   🔸 %-15@ : %.4fs  (%5.1f%%)", type, cost, percentage))
-            }
-        }
-        logger("-----------------------------------------------------")
-    }
 
     /// 是否存在目录区域
     public var hasTableOfContentsSection: Bool {
@@ -1173,13 +1125,6 @@ public final class MarkdownViewTextKit: UIView {
         }
         renderWorkItem = workItem
 
-        // 🔍 性能监控：打印调度延迟
-        if renderStartTime > 0 {
-            let elapsed = (CFAbsoluteTimeGetCurrent() - renderStartTime) * 1000
-            logger("🔍 [Perf] scheduleRerender: +\(String(format: "%.1f", elapsed))ms (delay 16ms)")
-        }
-
-        // 延迟执行以合并多次快速更新
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.016, execute: workItem)
     }
 
@@ -1353,8 +1298,7 @@ public final class MarkdownViewTextKit: UIView {
     private func performIncrementalParse(
         fullText: String,
         config: MarkdownConfiguration,
-        containerWidth: CGFloat,
-        perfStartTime: CFAbsoluteTime
+        containerWidth: CGFloat
     ) {
         let newLength = (fullText as NSString).length
         let lastParsedLength = parseCache.lastParsedLength
@@ -1378,35 +1322,23 @@ public final class MarkdownViewTextKit: UIView {
         renderQueue.async { [weak self] in
             guard let self else { return }
 
-            let parseStart = CFAbsoluteTimeGetCurrent()
+            let content = MarkdownRenderer(configuration: configuration).prepare(incrementalText, optional: .none)
 
-            // 预处理脚注
-            let (processedIncremental, newFootnotes) = self.preprocessFootnotes(incrementalText)
-
-            // 解析增量内容
-            let renderer = MarkdownRenderer(configuration: config, containerWidth: containerWidth)
-            let (incrementalElements, newAttachments, newTOCItems, newTocId) = renderer.render(processedIncremental)
-
-            let parseEnd = CFAbsoluteTimeGetCurrent()
-            let parseDuration = parseEnd - parseStart
-
-            logger("⚡️ [Incremental] Parse completed: \(incrementalElements.count) elements in \(String(format: "%.1f", parseDuration * 1000))ms")
+            logger("⚡️ [Incremental] Parse completed: \(content.elements.count) elements")
 
             // 4️⃣ 回到主线程合并结果
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
 
                 self.mergeIncrementalResults(
-                    incrementalElements: incrementalElements,
+                    incrementalElements: content.elements,
                     contextWindowSize: contextWindowSize,
-                    newFootnotes: newFootnotes,
-                    newAttachments: newAttachments,
-                    newTOCItems: newTOCItems,
-                    newTocId: newTocId,
+                    newFootnotes: content.footnotes,
+                    newAttachments: content.imageAttachments,
+                    newTOCItems: content.tableOfContents,
+                    newTocId: content.tocSectionId,
                     newLength: newLength,
-                    containerWidth: containerWidth,
-                    perfStartTime: perfStartTime,
-                    parseDuration: parseDuration
+                    containerWidth: containerWidth
                 )
             }
         }
@@ -1421,9 +1353,7 @@ public final class MarkdownViewTextKit: UIView {
         newTOCItems: [MarkdownTOCItem],
         newTocId: String?,
         newLength: Int,
-        containerWidth: CGFloat,
-        perfStartTime: CFAbsoluteTime,
-        parseDuration: Double
+        containerWidth: CGFloat
     ) {
         // 🧩 合并策略：
         // ⚡️ 性能优化：流式渲染时不移除任何视图，只追加真正新增的元素
@@ -1481,14 +1411,6 @@ public final class MarkdownViewTextKit: UIView {
         let config = configuration
         let containerWidth = bounds.width > 0 ? bounds.width : UIScreen.main.bounds.width - 32
 
-        // 🔍 性能监控：performRender 开始
-        if renderStartTime > 0 {
-            let elapsed = (CFAbsoluteTimeGetCurrent() - renderStartTime) * 1000
-            logger("🔍 [Perf] performRender start: +\(String(format: "%.1f", elapsed))ms")
-        }
-
-        let perfStartTime = renderStartTime // 捕获性能监控起始时间
-
         // ⚡️ 增量解析优化：判断是否可以使用增量解析
         // 节流已在 scheduleRerender 层面完成（150ms），这里只关心是否需要缓存失效
         if shouldInvalidateCache(newMarkdown: markdownText, containerWidth: containerWidth) {
@@ -1503,8 +1425,7 @@ public final class MarkdownViewTextKit: UIView {
             performFullParse(
                 markdownText: markdownText,
                 config: config,
-                containerWidth: containerWidth,
-                perfStartTime: perfStartTime
+                containerWidth: containerWidth
             )
         } else {
             // ⚡️ 增量解析模式（流式追加 + 非流式但有缓存）
@@ -1514,8 +1435,7 @@ public final class MarkdownViewTextKit: UIView {
             performIncrementalParse(
                 fullText: markdownText,
                 config: config,
-                containerWidth: containerWidth,
-                perfStartTime: perfStartTime
+                containerWidth: containerWidth
             )
         }
     }
@@ -1524,40 +1444,23 @@ public final class MarkdownViewTextKit: UIView {
     private func performFullParse(
         markdownText: String,
         config: MarkdownConfiguration,
-        containerWidth: CGFloat,
-        perfStartTime: CFAbsoluteTime
+        containerWidth: CGFloat
     ) {
         // 增加渲染版本号（线程安全）
         renderVersionLock.lock()
-        renderVersion += 1
+        renderVersion &+= 1
         let currentVersion = renderVersion
         renderVersionLock.unlock()
 
         renderQueue.async { [weak self] in
             guard let self else { return }
 
-            let startTime = CFAbsoluteTimeGetCurrent()
-
-            // 预处理脚注
-            let (processedMarkdown, footnotes) = self.preprocessFootnotes(markdownText)
-
-            // 直接渲染，获取所有需要的返回
-            let renderer = MarkdownRenderer(configuration: config, containerWidth: containerWidth)
-            let (newElements, attachments, tocItems, tocSectionId) = renderer.render(processedMarkdown)
-
-            let endTime = CFAbsoluteTimeGetCurrent()
-            let parseDuration = endTime - startTime
-
-            // 🔍 性能监控：解析完成
-            if !self.isStreaming && perfStartTime > 0 {
-                let elapsed = (CFAbsoluteTimeGetCurrent() - perfStartTime) * 1000
-                logger("🔍 [Perf] Parsing complete: +\(String(format: "%.1f", elapsed))ms (parse took \(String(format: "%.1f", parseDuration * 1000))ms)")
-            }
+            let renderer = MarkdownRenderer(configuration: config)
+            let content = renderer.prepare(markdownText, optional: .none)
 
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
 
-                // ⭐️ 关键：只使用最新版本的渲染结果
                 self.renderVersionLock.lock()
                 let isLatestVersion = currentVersion == self.renderVersion
                 self.renderVersionLock.unlock()
@@ -1567,51 +1470,40 @@ public final class MarkdownViewTextKit: UIView {
                     return
                 }
 
-                self.tableOfContents = tocItems
-                self.tocSectionId = tocSectionId
-                self.imageAttachments = attachments
-
-                // ⚡️ 更新缓存（为下次增量解析做准备）
-                self.parseCache.lastParsedLength = (markdownText as NSString).length
-                self.parseCache.cachedElements = newElements
-                self.parseCache.cachedFootnotes = footnotes
-                self.parseCache.cachedAttachments = attachments
-                self.parseCache.cachedTOCItems = tocItems
-                self.parseCache.tocSectionId = tocSectionId
-
-                // 🔍 性能监控：开始UI渲染
-                if !self.isStreaming && perfStartTime > 0 {
-                    let elapsed = (CFAbsoluteTimeGetCurrent() - perfStartTime) * 1000
-                    logger("🔍 [Perf] updateViews start: +\(String(format: "%.1f", elapsed))ms")
-                }
-
-                self.updateViews(newElements: newElements, footnotes: footnotes, containerWidth: containerWidth, parseDuration: parseDuration, perfStartTime: perfStartTime)
+                self.updateViews(content: content, containerWidth: containerWidth)
             }
         }
+    }
+
+    private func updateViews(
+        content: MarkdownPreparedContent,
+        containerWidth: CGFloat
+    ) {
+        tableOfContents = content.tableOfContents
+        tocSectionId = content.tocSectionId
+        imageAttachments = content.imageAttachments
+        cachedContainerWidth = containerWidth
+
+        parseCache.lastParsedLength = content.lastParsedLength
+        parseCache.cachedFootnotes = content.footnotes
+        parseCache.cachedElements = content.elements
+        parseCache.cachedAttachments = content.imageAttachments
+        parseCache.cachedTOCItems = content.tableOfContents
+        parseCache.tocSectionId = content.tocSectionId
+
+        self.updateViews(newElements: content.elements, footnotes: content.footnotes, containerWidth: containerWidth, precalculatedTextHeights: content.estimate?.fixedTextHeights)
     }
 
     private func updateViews(
         newElements: [MarkdownRenderElement],
         footnotes: [MarkdownFootnote],
         containerWidth: CGFloat,
-        parseDuration: Double = 0,
-        perfStartTime: CFAbsoluteTime = 0,
         precalculatedTextHeights: [CGFloat?]? = nil
     ) {
-        let startTime = CFAbsoluteTimeGetCurrent()
-        renderCosts = [:] // Reset performance counters
-
-        // Record Parsing Time
-        recordCost(for: "1. Parsing", duration: parseDuration)
-
         // ⚡️ 首屏优化：判断是否启用分批渲染
         // 条件：非流式模式 + 元素数量 > 5（避免过少内容也分批）
         let shouldUseBatchRendering = !isStreaming && newElements.count > 5 && !isEmbeddedInReusableCell()
 
-        // 🔍 诊断日志
-        if perfStartTime > 0 {
-            logger("🔍 [Perf] updateViews: isStreaming=\(isStreaming), elementCount=\(newElements.count), shouldBatch=\(shouldUseBatchRendering)")
-        }
 
         if shouldUseBatchRendering {
             // 🎯 阶段1: 逐个渲染直到达到目标高度（2屏）
@@ -1628,10 +1520,7 @@ public final class MarkdownViewTextKit: UIView {
                     newElements: newElements,
                     footnotes: footnotes,
                     containerWidth: containerWidth,
-                    parseDuration: parseDuration,
-                    startTime: startTime,
                     isBatchFirstScreen: false,
-                    perfStartTime: perfStartTime,
                     precalculatedTextHeights: precalculatedTextHeights
                 )
                 return
@@ -1644,18 +1533,16 @@ public final class MarkdownViewTextKit: UIView {
             let offscreenElements = Array(newElements.dropFirst(firstScreenCutoff))
 
             // ⭐️ 记录首屏渲染前的估算高度（用于后续校准）
+            let mRender = MarkdownRenderer.init(configuration: configuration)
             let estimatedFirstScreenHeight = firstScreenElements.reduce(CGFloat(0)) { total, element in
-                total + estimateElementHeight(element, containerWidth: containerWidth)
+                total + mRender.estimateElementHeight(element, containerWidth: containerWidth).totalHeight
             }
 
             updateViewsInternal(
                 newElements: firstScreenElements,
                 footnotes: [], // 首屏暂不渲染脚注
                 containerWidth: containerWidth,
-                parseDuration: parseDuration,
-                startTime: startTime,
                 isBatchFirstScreen: true,
-                perfStartTime: perfStartTime,
                 precalculatedTextHeights: precalculatedTextHeights.map { Array($0.prefix(firstScreenCutoff)) }
             )
 
@@ -1668,7 +1555,7 @@ public final class MarkdownViewTextKit: UIView {
 
             // ⚡️ 添加占位视图，预留离屏内容空间，避免布局跳动
             let baseEstimatedHeight = offscreenElements.reduce(CGFloat(0)) { total, element in
-                total + estimateElementHeight(element, containerWidth: containerWidth)
+                total + mRender.estimateElementHeight(element, containerWidth: containerWidth).totalHeight
             }
 
             // ⭐️ 改进：基于首屏误差比例来调整离屏估算
@@ -1801,18 +1688,11 @@ public final class MarkdownViewTextKit: UIView {
             return
         }
 
-        // 常规渲染（流式模式或元素数量较少）
-        if perfStartTime > 0 {
-            logger("🔍 [Perf] Using regular rendering (no batch)")
-        }
         updateViewsInternal(
             newElements: newElements,
             footnotes: footnotes,
             containerWidth: containerWidth,
-            parseDuration: parseDuration,
-            startTime: startTime,
             isBatchFirstScreen: false,
-            perfStartTime: perfStartTime,
             precalculatedTextHeights: precalculatedTextHeights
         )
     }
@@ -1826,9 +1706,10 @@ public final class MarkdownViewTextKit: UIView {
         var accumulatedHeight: CGFloat = 0
         var cutoffIndex = elements.count
 
+        let mRender = MarkdownRenderer(configuration: configuration)
         for (index, element) in elements.enumerated() {
             // 估算元素高度（快速估算，不创建实际视图）
-            let estimatedHeight = estimateElementHeight(element, containerWidth: containerWidth)
+            let estimatedHeight = mRender.estimateElementHeight(element, containerWidth: containerWidth).totalHeight
             accumulatedHeight += estimatedHeight
 
             if accumulatedHeight >= targetHeight {
@@ -1840,89 +1721,12 @@ public final class MarkdownViewTextKit: UIView {
         return cutoffIndex
     }
 
-    /// 快速估算元素高度（不创建视图）
-    private func estimateElementHeight(_ element: MarkdownRenderElement, containerWidth: CGFloat) -> CGFloat {
-        switch element {
-        case .attributedText(let text):
-            // 文本：使用boundingRect估算
-            let size = text.boundingRect(
-                with: CGSize(width: containerWidth, height: .greatestFiniteMagnitude),
-                options: [.usesLineFragmentOrigin, .usesFontLeading],
-                context: nil
-            ).size
-            return ceil(size.height) + configuration.paragraphSpacing + configuration.paragraphTopSpacing + configuration.paragraphBottomSpacing
-
-        case .heading(_, let text):
-            // ⭐️ 改进：使用实际文本计算高度，而不是固定值
-            let size = text.boundingRect(
-                with: CGSize(width: containerWidth, height: .greatestFiniteMagnitude),
-                options: [.usesLineFragmentOrigin, .usesFontLeading],
-                context: nil
-            ).size
-            return ceil(size.height) + configuration.headingTopSpacing + configuration.headingBottomSpacing
-
-        case .quote(let children, _):
-            // 引用：递归估算子元素 + padding
-            let childrenHeight = children.reduce(0) { $0 + estimateElementHeight($1, containerWidth: containerWidth - 40) }
-            return childrenHeight + 24  // 上下各12pt padding
-
-        case .codeBlock(_, let code):
-            let lines = code.string.components(separatedBy: .newlines).count
-            return CGFloat(lines) * 20 + 40  // 每行20pt + 上下各20pt padding
-
-        case .table(let data):
-            // 表格：行数 * 估算行高
-            let rowCount = data.rows.count + 1 // +1 for header
-            return CGFloat(rowCount) * 44 + 24  // 表格额外padding
-
-        case .list(let items, _):
-            // ⭐️ 改进：递归估算列表项高度
-            var totalHeight: CGFloat = 0
-            for item in items {
-                // 估算每个列表项的文本高度
-                if !item.children.isEmpty {
-                    totalHeight += item.children.reduce(0) { $0 + estimateElementHeight($1, containerWidth: containerWidth - 32) }
-                } else {
-                    totalHeight += 28  // 最小行高
-                }
-            }
-            return max(totalHeight, CGFloat(items.count) * 28)
-
-        case .thematicBreak:
-            return 24
-
-        case .image:
-            return configuration.imagePlaceholderHeight + 16  // 上下间距
-
-        case .latex:
-            return 80  // LaTeX 公式通常较高
-
-        case .details(let _, let children):
-            // ⭐️ 改进：summary 按钮 + 少量 padding
-            // 折叠状态下只显示按钮，但考虑按钮实际高度
-            return 56  // 40pt 按钮 + 16pt 上下间距
-
-        case .rawHTML:
-            return 100
-
-        case .custom(let data):
-            // 自定义元素：尝试从 ViewProvider 获取尺寸
-            if let provider = MarkdownCustomExtensionManager.shared.viewProvider(for: data.type) {
-                return provider.calculateSize(for: data, configuration: configuration, containerWidth: containerWidth).height
-            }
-            return 100
-        }
-    }
-
     /// 实际的视图更新逻辑（支持分批渲染）
     private func updateViewsInternal(
         newElements: [MarkdownRenderElement],
         footnotes: [MarkdownFootnote],
         containerWidth: CGFloat,
-        parseDuration: Double,
-        startTime: Double,
         isBatchFirstScreen: Bool,
-        perfStartTime: CFAbsoluteTime,
         precalculatedTextHeights: [CGFloat?]? = nil
     ) {
         var newSubviews: [UIView] = []
@@ -1965,22 +1769,18 @@ public final class MarkdownViewTextKit: UIView {
                     if let candidateView = contentStackView.arrangedSubviews[safe: i],
                        updateViewInPlace(candidateView, old: oldElement, new: newElement, containerWidth: containerWidth) {
 
-                        recordCost(for: "Update \(elementTypeString(newElement))", duration: CFAbsoluteTimeGetCurrent() - updateStart)
-
                         foundIndex = i
                         if isNested {
-                            // logger("  ✅ updateViewInPlace succeeded, reusing view at index \(i)")
+                            logger("  ✅ updateViewInPlace succeeded, reusing view at index \(i)")
                         }
                         break
                     } else {
-                        // Update failed, count cost anyway
-                        recordCost(for: "UpdateFail \(elementTypeString(newElement))", duration: CFAbsoluteTimeGetCurrent() - updateStart)
                         if isNested {
-                            // logger("  ❌ updateViewInPlace failed or view not found")
+                            logger("  ❌ updateViewInPlace failed or view not found")
                         }
                     }
                 } else if isNested {
-                    // logger("  → oldElement at \(i) cannot be reused (type mismatch)")
+                    logger("  → oldElement at \(i) cannot be reused (type mismatch)")
                 }
             }
 
@@ -2006,7 +1806,6 @@ public final class MarkdownViewTextKit: UIView {
                     containerWidth: containerWidth,
                     precalculatedHeight: precalculatedTextHeights?[safe: newIndex] ?? nil
                 )
-                recordCost(for: "Create \(elementTypeString(newElement))", duration: CFAbsoluteTimeGetCurrent() - createStart)
 
                 newSubviews.append(newView)
 
@@ -2044,17 +1843,15 @@ public final class MarkdownViewTextKit: UIView {
         while contentStackView.arrangedSubviews.count > newSubviews.count {
             contentStackView.arrangedSubviews.last?.removeFromSuperview()
         }
-        recordCost(for: "StackReconcile", duration: CFAbsoluteTimeGetCurrent() - reconcileStart)
 
         // --- 4. 脚注处理 ---
         // ⚡️ 流式渲染时跳过脚注，等流式完成后再渲染
         if !isStreaming {
             let footnoteStart = CFAbsoluteTimeGetCurrent()
             updateFootnotes(footnotes, width: containerWidth, newElementCount: newElements.count)
-            recordCost(for: "UpdateFootnotes", duration: CFAbsoluteTimeGetCurrent() - footnoteStart)
         }
 
-        finishUpdate(newElements: newElements, startTime: startTime, isBatchFirstScreen: isBatchFirstScreen, perfStartTime: perfStartTime)
+        finishUpdate(newElements: newElements, isBatchFirstScreen: isBatchFirstScreen)
     }
 
     // Helper to get element type name
@@ -2101,7 +1898,7 @@ public final class MarkdownViewTextKit: UIView {
         }
     }
 
-    private func finishUpdate(newElements: [MarkdownRenderElement], startTime: Double, isBatchFirstScreen: Bool, perfStartTime: CFAbsoluteTime) {
+    private func finishUpdate(newElements: [MarkdownRenderElement], isBatchFirstScreen: Bool) {
         oldElements = newElements
 
         // ⚡️ 首屏优化：首屏阶段跳过耗时操作，等离屏渲染完成后再执行
@@ -2110,36 +1907,12 @@ public final class MarkdownViewTextKit: UIView {
             invalidateIntrinsicContentSize()
             logger("🎬 [Regular/Offscreen] Calling notifyHeightChange() after rendering \(newElements.count) elements")
             notifyHeightChange()
-
-            // 🔍 性能监控：打印首帧时间（常规渲染模式）
-            if perfStartTime > 0 {
-                let firstFrameTime = (CFAbsoluteTimeGetCurrent() - perfStartTime) * 1000
-                let renderTime = (CFAbsoluteTimeGetCurrent() - startTime) * 1000
-                logger("🎯 [FIRST FRAME] Total: \(String(format: "%.1f", firstFrameTime))ms | Render: \(String(format: "%.1f", renderTime))ms (regular)")
-                logger("🔍 [Perf] ========================================")
-            }
         } else {
             // 首屏阶段：只更新布局，但不通知高度（等添加占位视图后再通知）
             invalidateIntrinsicContentSize()
 
-            // 🔍 性能监控：打印首帧时间（分批渲染首屏）
-            if perfStartTime > 0 {
-                let firstFrameTime = (CFAbsoluteTimeGetCurrent() - perfStartTime) * 1000
-                let renderTime = (CFAbsoluteTimeGetCurrent() - startTime) * 1000
-                logger("🎯 [FIRST FRAME] Total: \(String(format: "%.1f", firstFrameTime))ms | Render: \(String(format: "%.1f", renderTime))ms (batched)")
-                logger("🔍 [Perf] ========================================")
-            }
-
             // ⚠️ 注意：首屏不调用 notifyHeightChange()，等占位视图添加后再通知
         }
-
-        //        let endTime = CFAbsoluteTimeGetCurrent()
-        //        let totalDuration = endTime - startTime
-        //
-        //        // Only print if it took noticeable time (e.g. > 10ms)
-        //        if totalDuration > 0.01 && !isBatchFirstScreen {
-        //             printRenderCosts(totalDuration: totalDuration)
-        //        }
     }
 
     // MARK: - ⚠️ 视图复用优化（已禁用）
@@ -3826,11 +3599,6 @@ public final class MarkdownViewTextKit: UIView {
     }
 
     private func notifyHeightChange(force: Bool = false) {
-        let start = CFAbsoluteTimeGetCurrent()
-        defer {
-            recordCost(for: "Layout Calculation", duration: CFAbsoluteTimeGetCurrent() - start)
-        }
-
         // ⭐️ 强制 StackView 立即更新布局
         if force {
             self.contentStackView.invalidateIntrinsicContentSize()
@@ -4002,8 +3770,7 @@ public final class MarkdownViewTextKit: UIView {
             // 2. 一次性解析整个文本
             let markdownParseStart = CFAbsoluteTimeGetCurrent()
             let config = self.configuration
-            let containerWidth = UIScreen.main.bounds.width - 32
-            let renderer = MarkdownRenderer(configuration: config, containerWidth: containerWidth)
+            let renderer = MarkdownRenderer(configuration: config)
             let (elements, attachments, tocItems, tocId) = renderer.render(processedMarkdown)
             let markdownParseTime = CFAbsoluteTimeGetCurrent() - markdownParseStart
             logger("[STREAM] Markdown解析完成: \(elements.count) 个元素, 耗时 \(String(format: "%.1f", markdownParseTime * 1000))ms")
@@ -4152,7 +3919,7 @@ public final class MarkdownViewTextKit: UIView {
 
         let chunkTime = CFAbsoluteTimeGetCurrent() - chunkStartTime
         logger("[STREAM] 分片 \(currentIndex + 1) 完成: \(range.endIndex - range.startIndex) 个元素, 耗时 \(String(format: "%.1f", chunkTime * 1000))ms" +
-              (latexCount > 0 ? ", 其中 \(latexCount) 个LaTeX耗时 \(String(format: "%.1f", latexTotalTime * 1000))ms" : ""))
+               (latexCount > 0 ? ", 其中 \(latexCount) 个LaTeX耗时 \(String(format: "%.1f", latexTotalTime * 1000))ms" : ""))
 
         streamDisplayedCount = range.endIndex
         oldElements = Array(streamParsedElements.prefix(range.endIndex))
@@ -4297,8 +4064,7 @@ public final class MarkdownViewTextKit: UIView {
             let parseStartTime = CFAbsoluteTimeGetCurrent()
 
             let config = self.configuration
-            let containerWidth = UIScreen.main.bounds.width - 32
-            let renderer = MarkdownRenderer(configuration: config, containerWidth: containerWidth)
+            let renderer = MarkdownRenderer(configuration: config)
             let (elements, attachments, tocItems, tocId) = renderer.render(textToParse)
 
             let parseDuration = CFAbsoluteTimeGetCurrent() - parseStartTime
@@ -4310,7 +4076,7 @@ public final class MarkdownViewTextKit: UIView {
                 let newElements = Array(elements.dropFirst(previousCount))
 
                 logger("✅ [Fake-Stream] Chunk \(self.fakeStreamChunkIndex) parsed: +\(newElements.count) elements, " +
-                      "total: \(elements.count), time: \(String(format: "%.1f", parseDuration * 1000))ms")
+                       "total: \(elements.count), time: \(String(format: "%.1f", parseDuration * 1000))ms")
 
                 // 更新解析结果
                 self.streamParsedElements = elements
@@ -4528,8 +4294,7 @@ public final class MarkdownViewTextKit: UIView {
             guard let self = self else { return }
 
             let config = self.configuration
-            let containerWidth = UIScreen.main.bounds.width - 32
-            let renderer = MarkdownRenderer(configuration: config, containerWidth: containerWidth)
+            let renderer = MarkdownRenderer(configuration: config)
             let (elements, attachments, tocItems, tocId) = renderer.render(fullText)
 
             DispatchQueue.main.async { [weak self] in
@@ -5021,7 +4786,7 @@ public final class MarkdownViewTextKit: UIView {
         waitingAnimationTimer?.invalidate()
 
         renderVersionLock.lock()
-        renderVersion += 1
+        renderVersion &+= 1
         renderVersionLock.unlock()
 
         isStreaming = false
@@ -5354,29 +5119,18 @@ public final class MarkdownViewTextKit: UIView {
         renderQueue.sync { [weak self] in
             guard let self = self, self.isRealStreamingMode else { return }
 
-            let parseStart = CFAbsoluteTimeGetCurrent()
+            let content = MarkdownRenderer(configuration: configuration).prepare(moduleText, optional: .none)
 
-            // 预处理脚注
-            let (processedText, _) = self.preprocessFootnotes(moduleText)
-
-            // 解析 Markdown
-            let config = self.configuration
-            let containerWidth = UIScreen.main.bounds.width - 32
-            let renderer = MarkdownRenderer(configuration: config, containerWidth: containerWidth)
-            let result = renderer.render(processedText)
-
-            elements = result.0
-            attachments = result.1
-            tocItems = result.2
-            tocId = result.3
-
-            parseDuration = (CFAbsoluteTimeGetCurrent() - parseStart) * 1000
+            elements = content.elements
+            attachments = content.imageAttachments
+            tocItems = content.tableOfContents
+            tocId = content.tocSectionId
         }
 
         // ⭐️ 回到主线程更新 UI（不使用 sync 避免死锁）
         guard self.isRealStreamingMode, !elements.isEmpty || !attachments.isEmpty else { return }
 
-        logger("✅ [SmartBuffer] Parsed module: \(elements.count) elements, time: \(String(format: "%.1f", parseDuration))ms")
+        logger("✅ [SmartBuffer] Parsed module: \(elements.count) elements")
 
         // 累积到完整文本（用于最终的 markdown 属性）
         self.realStreamAccumulatedText += moduleText + "\n\n"
@@ -5453,8 +5207,7 @@ public final class MarkdownViewTextKit: UIView {
 
             // 解析 Markdown
             let config = self.configuration
-            let containerWidth = UIScreen.main.bounds.width - 32
-            let renderer = MarkdownRenderer(configuration: config, containerWidth: containerWidth)
+            let renderer = MarkdownRenderer(configuration: config)
             let (elements, attachments, tocItems, tocId) = renderer.render(processedText)
 
             let parseDuration = (CFAbsoluteTimeGetCurrent() - parseStart) * 1000
@@ -5657,23 +5410,19 @@ public final class MarkdownViewTextKit: UIView {
             let remainingText = streamBuffer.flush()
             if !remainingText.isEmpty {
                 logger("📦 [SmartBuffer] Flushing remaining content: \(remainingText.prefix(50))...")
-                // 同步解析剩余内容
-                let (processedText, _) = preprocessFootnotes(remainingText)
-                let containerWidth = bounds.width > 0 ? bounds.width : UIScreen.main.bounds.width - 32
-                let renderer = MarkdownRenderer(configuration: configuration, containerWidth: containerWidth)
-                let (elements, attachments, tocItems, tocId) = renderer.render(processedText)
 
-                // 累积到完整文本
+                let content = MarkdownRenderer(configuration: configuration).prepare(remainingText, optional: .none)
+
                 realStreamAccumulatedText += remainingText
 
                 // 显示剩余元素
-                if !elements.isEmpty {
+                if !content.elements.isEmpty {
                     let previousCount = realStreamParsedElementCount
-                    realStreamParsedElementCount += elements.count
-                    imageAttachments.append(contentsOf: attachments)
-                    tableOfContents.append(contentsOf: tocItems)
-                    if let id = tocId { tocSectionId = id }
-                    displayRealStreamElements(elements, startIndex: previousCount)
+                    realStreamParsedElementCount += content.elements.count
+                    imageAttachments.append(contentsOf: content.imageAttachments)
+                    tableOfContents.append(contentsOf: content.tableOfContents)
+                    if let id = content.tocSectionId { tocSectionId = id }
+                    displayRealStreamElements(content.elements, startIndex: previousCount)
                 }
             }
         }

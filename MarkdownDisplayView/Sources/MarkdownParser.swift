@@ -40,7 +40,6 @@ public enum PendingStructureType: String {
 final class MarkdownParser: MarkdownParserProtocol {
 
     private let configuration: MarkdownConfiguration
-    private let containerWidth: CGFloat
     private let inlineSegmentAttributeKey = NSAttributedString.Key("MarkdownInlineSegment")
     // 解析锁：避免 swift-cmark 在多线程并发时挂载语法扩展导致崩溃
     private static let parseLock = NSLock()
@@ -65,9 +64,8 @@ final class MarkdownParser: MarkdownParserProtocol {
 
     private var detectedTOCSectionId: String?
 
-    init(configuration: MarkdownConfiguration, containerWidth: CGFloat) {
+    init(configuration: MarkdownConfiguration) {
         self.configuration = configuration
-        self.containerWidth = containerWidth
     }
 
     // MARK: - 增量解析核心方法

@@ -19,33 +19,36 @@ public protocol MarkdownParserProtocol {
 
 /// Markdown 预渲染结果，可在后台提前生成后交给 `MarkdownViewTextKit` 直接显示。
 public struct MarkdownPreparedContent {
+    public struct Estimate {
+        public let preparedWidth: CGFloat
+        public let heights: [CGFloat]
+        public let fixedTextHeights: [CGFloat?]
+    }
+
+    public let lastParsedLength: Int
+    public let footnotes: [MarkdownFootnote]
     public let elements: [MarkdownRenderElement]
     public let imageAttachments: [(attachment: MarkdownImageAttachment, urlString: String)]
     public let tableOfContents: [MarkdownTOCItem]
     public let tocSectionId: String?
-    public let preparedWidth: CGFloat
-    public let estimatedElementHeights: [CGFloat]
-    public let estimatedTotalHeight: CGFloat
-
-    let fixedTextHeights: [CGFloat?]
+    public let estimate: Estimate?
 
     init(
+        lastParsedLength: Int,
+        footnotes: [MarkdownFootnote],
         elements: [MarkdownRenderElement],
         imageAttachments: [(attachment: MarkdownImageAttachment, urlString: String)],
         tableOfContents: [MarkdownTOCItem],
         tocSectionId: String?,
-        preparedWidth: CGFloat,
-        estimatedElementHeights: [CGFloat],
-        fixedTextHeights: [CGFloat?]
+        estimate: Estimate?
     ) {
+        self.lastParsedLength = lastParsedLength
+        self.footnotes = footnotes
         self.elements = elements
         self.imageAttachments = imageAttachments
         self.tableOfContents = tableOfContents
         self.tocSectionId = tocSectionId
-        self.preparedWidth = preparedWidth
-        self.estimatedElementHeights = estimatedElementHeights
-        self.estimatedTotalHeight = estimatedElementHeights.reduce(0, +)
-        self.fixedTextHeights = fixedTextHeights
+        self.estimate = estimate
     }
 }
 
@@ -53,18 +56,15 @@ public struct MarkdownPreparedContent {
 public final class MarkdownRenderer {
 
     private let configuration: MarkdownConfiguration
-    private let containerWidth: CGFloat
     private let parser: MarkdownParserProtocol
 
     /// 占位符前缀（使用不会被 Markdown 解析的格式）
     private static let placeholderPrefix = "CUSTOMEXT"
     private static let placeholderSuffix = "ENDEXT"
 
-    public init(configuration: MarkdownConfiguration = MarkdownConfiguration.default,
-                containerWidth: CGFloat) {
+    public init(configuration: MarkdownConfiguration = MarkdownConfiguration.default) {
         self.configuration = configuration
-        self.containerWidth = containerWidth
-        self.parser = MarkdownParser(configuration: configuration, containerWidth: containerWidth)
+        self.parser = MarkdownParser(configuration: configuration)
     }
 
     /// 外部调用入口：传入 Markdown 字符串
@@ -119,25 +119,82 @@ public final class MarkdownRenderer {
     }
 
     /// 预处理 Markdown，生成可复用的渲染元素和按当前宽度估算的高度。
-    public func prepare(_ markdown: String) -> MarkdownPreparedContent {
-        let result = render(markdown)
-        let estimates = result.elements.map { estimateElementHeight($0, containerWidth: containerWidth) }
+    public enum Estimate {
+        case none
+        case width(CGFloat)
+    }
+    public func prepare(_ markdown: String, optional: Estimate) -> MarkdownPreparedContent {
+        let (processedMarkdown, footnotes) = self.preprocessFootnotes(markdown)
+        let result = render(processedMarkdown)
+
+        let estimate: MarkdownPreparedContent.Estimate? = {
+            guard case .width(let width) = optional else {
+                return nil
+            }
+
+            let estimates = result.elements.map { estimateElementHeight($0, containerWidth: width) }
+            return MarkdownPreparedContent.Estimate(
+                preparedWidth: width,
+                heights: estimates.map(\.totalHeight),
+                fixedTextHeights: estimates.map(\.fixedTextHeight),
+            )
+        }()
 
         return MarkdownPreparedContent(
+            lastParsedLength: (processedMarkdown as NSString).length,
+            footnotes: footnotes,
             elements: result.elements,
             imageAttachments: result.imageAttachments,
             tableOfContents: result.tableOfContents,
             tocSectionId: result.tocSectionId,
-            preparedWidth: containerWidth,
-            estimatedElementHeights: estimates.map(\.totalHeight),
-            fixedTextHeights: estimates.map(\.fixedTextHeight)
+            estimate: estimate
         )
     }
 
-    private func estimateElementHeight(
-        _ element: MarkdownRenderElement,
-        containerWidth: CGFloat
-    ) -> (totalHeight: CGFloat, fixedTextHeight: CGFloat?) {
+    func preprocessFootnotes(_ text: String) -> (String, [MarkdownFootnote]) {
+        // Optimization: Fast check for footnote syntax markers.
+        // If neither definition marker nor reference marker exists, skip regex entirely.
+        if !text.contains("[^") {
+            return (text, [])
+        }
+
+        var processedText = text
+        var footnotes: [MarkdownFootnote] = []
+
+        let definitionPattern = #"\[\^([^\]]+)\]:\s*(.+)$"#
+        if let regex = try? NSRegularExpression(pattern: definitionPattern, options: .anchorsMatchLines) {
+            let matches = regex.matches(in: text, range: NSRange(text.startIndex..., in: text))
+
+            for match in matches.reversed() {
+                if let idRange = Range(match.range(at: 1), in: text),
+                   let contentRange = Range(match.range(at: 2), in: text),
+                   let fullRange = Range(match.range, in: text) {
+                    let id = String(text[idRange])
+                    let content = String(text[contentRange])
+                    footnotes.insert(MarkdownFootnote(id: id, content: content), at: 0)
+                    processedText = processedText.replacingCharacters(in: fullRange, with: "")
+                }
+            }
+        }
+
+        let referencePattern = #"\[\^([^\]]+)\]"#
+        if let regex = try? NSRegularExpression(pattern: referencePattern, options: []) {
+            let matches = regex.matches(in: processedText, range: NSRange(processedText.startIndex..., in: processedText))
+
+            for match in matches.reversed() {
+                if let idRange = Range(match.range(at: 1), in: processedText),
+                   let fullRange = Range(match.range, in: processedText) {
+                    let id = String(processedText[idRange])
+                    let replacement = "⁽\(id)⁾"
+                    processedText = processedText.replacingCharacters(in: fullRange, with: replacement)
+                }
+            }
+        }
+
+        return (processedText, footnotes)
+    }
+
+    func estimateElementHeight(_ element: MarkdownRenderElement, containerWidth: CGFloat, suppressTopSpacing: Bool = false, suppressBottomSpacing: Bool = false) -> (totalHeight: CGFloat, fixedTextHeight: CGFloat?) {
         switch element {
         case .attributedText(let text):
             let size = text.boundingRect(
@@ -145,9 +202,12 @@ public final class MarkdownRenderer {
                 options: [.usesLineFragmentOrigin, .usesFontLeading],
                 context: nil
             ).size
+            let isInlineSegment = text.attribute(NSAttributedString.Key("MarkdownInlineSegment"), at: 0, effectiveRange: nil) != nil
+            let topSpacing = suppressTopSpacing ? 0 : (isInlineSegment ? 0 : configuration.paragraphTopSpacing)
+            let bottomSpacing = suppressBottomSpacing ? 0 : (isInlineSegment ? 0 : configuration.paragraphBottomSpacing)
             let textHeight = ceil(size.height)
             return (
-                textHeight + configuration.paragraphSpacing + configuration.paragraphTopSpacing + configuration.paragraphBottomSpacing,
+                textHeight + topSpacing + bottomSpacing,
                 textHeight
             )
 
@@ -157,50 +217,105 @@ public final class MarkdownRenderer {
                 options: [.usesLineFragmentOrigin, .usesFontLeading],
                 context: nil
             ).size
+            let topSpacing = suppressTopSpacing ? 0 : configuration.headingTopSpacing
+            let bottomSpacing = suppressBottomSpacing ? 0 : configuration.headingBottomSpacing
             let textHeight = ceil(size.height)
             return (
-                textHeight + configuration.headingTopSpacing + configuration.headingBottomSpacing,
+                textHeight + topSpacing + bottomSpacing,
                 textHeight
             )
 
-        case .quote(let children, _):
-            let childrenHeight = children.reduce(CGFloat(0)) {
-                $0 + estimateElementHeight($1, containerWidth: containerWidth - 40).totalHeight
-            }
-            return (childrenHeight + 24, nil)
+        case .quote(let children, let level):
+            // 与 createQuoteView 一致：level1 padding=24, level2+ padding=44
+            let quotePadding: CGFloat = (level > 1) ? 44 : 24
+            let contentWidth = max(0, containerWidth - quotePadding)
+            let childrenHeight = children.reduce(0) { $0 + estimateElementHeight($1, containerWidth: contentWidth).totalHeight }
+            // 实际垂直间距：top(4+8=12) + bottom(8) = 20
+            return (childrenHeight + 20, nil)
 
         case .codeBlock(_, let code):
-            let lines = code.string.components(separatedBy: .newlines).count
-            return (CGFloat(lines) * 20 + 40, nil)
+            // 与 CodeBlockAttachment 一致：boundingRect + padding*2（上下各12pt）
+            let codeSize = code.boundingRect(
+                with: CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude),
+                options: [.usesLineFragmentOrigin, .usesFontLeading],
+                context: nil
+            ).size
+            return (ceil(codeSize.height) + 24, nil)
 
         case .table(let data):
+            // 与 MarkdownTableLayoutCalculator 一致：逐行测量
+            let columnCount = max(data.headers.count, data.rows.first?.count ?? 1)
+            let columnWidth = max(60, containerWidth / CGFloat(columnCount))
             let rowCount = data.rows.count + 1
-            return (CGFloat(rowCount) * 44 + 24, nil)
+            var totalHeight: CGFloat = 0
+            for row in data.rows {
+                var rowHeight: CGFloat = 44
+                for cell in row {
+                    let cellHeight = cell.boundingRect(
+                        with: CGSize(width: columnWidth, height: CGFloat.greatestFiniteMagnitude),
+                        options: [.usesLineFragmentOrigin],
+                        context: nil
+                    ).height + 20
+                    rowHeight = max(rowHeight, cellHeight)
+                }
+                totalHeight += rowHeight
+            }
+            // header 行
+            if !data.headers.isEmpty {
+                var headerHeight: CGFloat = 44
+                for header in data.headers {
+                    let h = header.boundingRect(
+                        with: CGSize(width: columnWidth, height: CGFloat.greatestFiniteMagnitude),
+                        options: [.usesLineFragmentOrigin],
+                        context: nil
+                    ).height + 20
+                    headerHeight = max(headerHeight, h)
+                }
+                totalHeight += headerHeight
+            } else {
+                totalHeight += 44
+            }
+            totalHeight += CGFloat(rowCount) // separator 约 1pt/行
+            return (totalHeight, nil)
 
-        case .list(let items, _):
+        case .list(let items, let level):
+            // 与 createListView 一致：level1 indent=0, level2+ indent=listIndent
+            let currentIndent: CGFloat = (level > 1) ? configuration.listIndent : 0
+            let contentMaxWidth = max(0, containerWidth - currentIndent)
+            let maxMarkerWidth = configuration.listMarkerMinWidth + configuration.listMarkerSpacing
+            let childWidth = max(0, contentMaxWidth - maxMarkerWidth - configuration.listMarkerSpacing)
             var totalHeight: CGFloat = 0
             for item in items {
-                if item.children.isEmpty {
-                    totalHeight += 28
+                if !item.children.isEmpty {
+                    totalHeight += item.children.reduce(0) { $0 + estimateElementHeight($1, containerWidth: childWidth).totalHeight }
                 } else {
-                    totalHeight += item.children.reduce(CGFloat(0)) {
-                        $0 + estimateElementHeight($1, containerWidth: containerWidth - 32).totalHeight
-                    }
+                    totalHeight += 28
                 }
             }
-            return (max(totalHeight, CGFloat(items.count) * 28), nil)
+            // 加上列表项间距
+            let spacingTotal = CGFloat(max(0, items.count - 1)) * configuration.listItemSpacing
+            return (max(totalHeight + spacingTotal, CGFloat(items.count) * 28), nil)
 
         case .thematicBreak:
             return (24, nil)
 
         case .image:
-            return (configuration.imagePlaceholderHeight + 16, nil)
+            let topSpacing = suppressTopSpacing ? 0 : 8.0
+            let bottomSpacing = suppressBottomSpacing ? 0 : 8.0
+            return (configuration.imagePlaceholderHeight + topSpacing + bottomSpacing, nil)
 
-        case .latex:
-            return (80, nil)
+        case .latex(let latex):
+            let topSpacing = suppressTopSpacing ? 0 : 8.0
+            let bottomSpacing = suppressBottomSpacing ? 0 : 8.0
+            let formulaSize = LatexMathView.calculateSize(
+                latex: latex,
+                fontSize: configuration.latexFontSize,
+                padding: configuration.latexPadding
+            )
+            return (formulaSize.height + topSpacing + bottomSpacing, nil)
 
         case .details:
-            return (56, nil)
+            return (48, nil)
 
         case .rawHTML:
             return (100, nil)

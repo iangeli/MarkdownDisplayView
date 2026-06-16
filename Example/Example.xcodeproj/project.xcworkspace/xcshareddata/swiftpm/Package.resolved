@@ -1,6 +1,15 @@
 {
-  "originHash" : "0ca00d396a78a8853b1c6b6ea9acdef935b9152c70c7c3dc56c5ab281adab0a4",
+  "originHash" : "b267b1217c143e26903f016a3fb7bd7c684ce43b7dff67ec80bd1ee204d4d9c8",
   "pins" : [
+    {
+      "identity" : "lookinserver",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/QMUI/LookinServer.git",
+      "state" : {
+        "revision" : "e553d1b689d147817dc54ad5c28fcff71e860101",
+        "version" : "1.2.8"
+      }
+    },
     {
       "identity" : "swift-cmark",
       "kind" : "remoteSourceControl",
