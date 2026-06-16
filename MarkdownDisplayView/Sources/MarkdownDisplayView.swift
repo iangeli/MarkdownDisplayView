@@ -21,10 +21,10 @@ public final class MarkdownViewTextKit: UIView {
         let engine = TypewriterEngine()
         engine.onComplete = { [weak self] in
             // 队列播放完毕的回调
-            print("✅ [Typewriter] All animations completed")
+            logger("✅ [Typewriter] All animations completed")
 
             // ⭐️ [FOOTNOTE_DEBUG] 调试日志
-            print("[FOOTNOTE_DEBUG] 🔔 TypewriterEngine.onComplete triggered, isRealStreamingMode=\(self?.isRealStreamingMode ?? false), isStreaming=\(self?.isStreaming ?? false)")
+            logger("[FOOTNOTE_DEBUG] 🔔 TypewriterEngine.onComplete triggered, isRealStreamingMode=\(self?.isRealStreamingMode ?? false), isStreaming=\(self?.isStreaming ?? false)")
 
             // ⚡️ 流式优化：打字机动画完成后渲染脚注
             self?.renderFootnotesIfPending()
@@ -65,7 +65,7 @@ public final class MarkdownViewTextKit: UIView {
             // 🔍 性能监控：记录渲染开始时间
             if !isStreaming {
                 renderStartTime = CFAbsoluteTimeGetCurrent()
-                print("🔍 [Perf] ========== Markdown Set ==========")
+                logger("🔍 [Perf] ========== Markdown Set ==========")
             }
             scheduleRerender()
         }
@@ -230,15 +230,15 @@ public final class MarkdownViewTextKit: UIView {
 
     private func printRenderCosts(totalDuration: Double) {
         guard !renderCosts.isEmpty else { return }
-        print("\n--- 📊 UI Render Performance (Total: \(String(format: "%.4f", totalDuration))sÅ) ---")
+        logger("\n--- 📊 UI Render Performance (Total: \(String(format: "%.4f", totalDuration))sÅ) ---")
         let sortedCosts = renderCosts.sorted { $0.value > $1.value }
         for (type, cost) in sortedCosts {
             let percentage = (cost / totalDuration) * 100
             if cost > 0.0005 { // Filter out negligible costs (< 0.5ms)
-                print(String(format: "   🔸 %-15@ : %.4fs  (%5.1f%%)", type, cost, percentage))
+                logger(String(format: "   🔸 %-15@ : %.4fs  (%5.1f%%)", type, cost, percentage))
             }
         }
-        print("-----------------------------------------------------")
+        logger("-----------------------------------------------------")
     }
 
     /// 是否存在目录区域
@@ -599,7 +599,7 @@ public final class MarkdownViewTextKit: UIView {
         case (.heading, .heading):
             return true  // 标题类型相同，即使ID不同也可以更新
         case (.latex(let oldLatex), .latex(let newLatex)):
-            // print("🔍 [canReuseElement] LaTeX: old=\(oldLatex.prefix(20))... new=\(newLatex.prefix(20))... → true")
+            // logger("🔍 [canReuseElement] LaTeX: old=\(oldLatex.prefix(20))... new=\(newLatex.prefix(20))... → true")
             return true  // LaTeX类型相同，即使内容不同也可以更新
         case (.codeBlock, .codeBlock):
             return true  // 代码块可以原地更新
@@ -625,7 +625,7 @@ public final class MarkdownViewTextKit: UIView {
     /// ⭐️ 尝试原地更新元素
     /// - Returns: 是否更新成功。如果返回 false，说明视图结构不兼容（例如 LaTeX 需要变更为滚动视图），需要重建。
     private func updateViewInPlace(_ view: UIView, old: MarkdownRenderElement, new: MarkdownRenderElement, containerWidth: CGFloat) -> Bool {
-        // print("[MarkdownDisplayView] 🔧 updateViewInPlace: old=\(old), new=\(new)")
+        // logger("[MarkdownDisplayView] 🔧 updateViewInPlace: old=\(old), new=\(new)")
 
         switch (old, new) {
         case (.attributedText(_), .attributedText(let newText)):
@@ -697,7 +697,7 @@ public final class MarkdownViewTextKit: UIView {
         case (.quote(let oldChildren, let oldLevel), .quote(let newChildren, let newLevel)):
             // 层级不同，需要重建
             if oldLevel != newLevel {
-                print("⚠️ [Quote] Level changed: \(oldLevel) → \(newLevel), rebuilding")
+                logger("⚠️ [Quote] Level changed: \(oldLevel) → \(newLevel), rebuilding")
                 return false
             }
 
@@ -707,7 +707,7 @@ public final class MarkdownViewTextKit: UIView {
                   let container = outerContainer.subviews.first,
                   let contentStack = container.subviews.first(where: { $0 is UIStackView }) as? UIStackView
             else {
-                print("⚠️ [Quote] View structure validation failed, rebuilding. view type: \(type(of: view)), subviews: \(view.subviews.count)")
+                logger("⚠️ [Quote] View structure validation failed, rebuilding. view type: \(type(of: view)), subviews: \(view.subviews.count)")
                 return false
             }
 
@@ -917,20 +917,20 @@ public final class MarkdownViewTextKit: UIView {
 
             // 层级不同，需要重建
             if oldLevel != newLevel {
-                print("⚠️ [List] Level changed: \(oldLevel) → \(newLevel), rebuilding")
+                logger("⚠️ [List] Level changed: \(oldLevel) → \(newLevel), rebuilding")
                 return false
             }
 
             // ⚡️ 允许 items 数量不同（流式渲染场景）
             // 只要新增的 items，其他部分可以复用
-            print("♻️ [List] Updating list: oldItems=\(oldItems.count) → newItems=\(newItems.count)")
+            logger("♻️ [List] Updating list: oldItems=\(oldItems.count) → newItems=\(newItems.count)")
 
             // 1. 验证视图结构 (List: indentWrapper (UIView) -> container (UIStackView))
             // ⚠️ 注意：createListView 返回的是 indentWrapper，不是 container！
             guard view.subviews.count > 0,
                   let container = view.subviews.first as? UIStackView else {
                 let firstSubviewType = view.subviews.first.map { "\(type(of: $0))" } ?? "nil"
-                print("⚠️ [List] View structure validation failed, view type: \(type(of: view)), subviews: \(view.subviews.count), first subview: \(firstSubviewType)")
+                logger("⚠️ [List] View structure validation failed, view type: \(type(of: view)), subviews: \(view.subviews.count), first subview: \(firstSubviewType)")
                 return false
             }
 
@@ -1113,7 +1113,7 @@ public final class MarkdownViewTextKit: UIView {
 
             // 如果出现需要重建的情况，返回 false 触发完整重建
             if needsReconcile {
-                print("⚠️ [List] needsReconcile=true, triggering full rebuild")
+                logger("⚠️ [List] needsReconcile=true, triggering full rebuild")
                 return false
             }
 
@@ -1130,7 +1130,7 @@ public final class MarkdownViewTextKit: UIView {
                 normalizeListContentStackLayout(contentStack, itemContentWidth: itemContentWidth)
             }
 
-            print("✅ [List] Successfully updated, reused existing views")
+            logger("✅ [List] Successfully updated, reused existing views")
             return true
 
         case (.custom(let oldData), .custom(let newData)):
@@ -1176,7 +1176,7 @@ public final class MarkdownViewTextKit: UIView {
         // 🔍 性能监控：打印调度延迟
         if renderStartTime > 0 {
             let elapsed = (CFAbsoluteTimeGetCurrent() - renderStartTime) * 1000
-            print("🔍 [Perf] scheduleRerender: +\(String(format: "%.1f", elapsed))ms (delay 16ms)")
+            logger("🔍 [Perf] scheduleRerender: +\(String(format: "%.1f", elapsed))ms (delay 16ms)")
         }
 
         // 延迟执行以合并多次快速更新
@@ -1234,10 +1234,10 @@ public final class MarkdownViewTextKit: UIView {
                 }
             }
 
-            print("📺 [Stream] Showing elements \(streamDisplayedCount)..<\(actualTargetIndex) (target: \(targetIndex), \(latexCountInBatch) LaTeX in batch)")
+            logger("📺 [Stream] Showing elements \(streamDisplayedCount)..<\(actualTargetIndex) (target: \(targetIndex), \(latexCountInBatch) LaTeX in batch)")
             for i in streamDisplayedCount..<actualTargetIndex {
                 let element = streamParsedElements[i]
-                print("  ├─ Element[\(i)]: \(elementTypeString(element))")
+                logger("  ├─ Element[\(i)]: \(elementTypeString(element))")
                 let view = createView(for: element, containerWidth: containerWidth)
                 view.tag = 1000 + i
 
@@ -1284,7 +1284,7 @@ public final class MarkdownViewTextKit: UIView {
         if currentLength >= streamTotalTextLength {
             // 显示剩余元素
             if streamDisplayedCount < streamParsedElements.count {
-                print("🎬 [Stream Complete] Showing remaining \(streamParsedElements.count - streamDisplayedCount) elements")
+                logger("🎬 [Stream Complete] Showing remaining \(streamParsedElements.count - streamDisplayedCount) elements")
 
                 for i in streamDisplayedCount..<streamParsedElements.count {
                     let element = streamParsedElements[i]
@@ -1318,7 +1318,7 @@ public final class MarkdownViewTextKit: UIView {
             // 这样可以避免脚注过早出现影响自动滚动
             if !streamParsedFootnotes.isEmpty && !pendingFootnoteRender {
                 pendingFootnoteRender = true
-                print("🔖 [Footnotes] Deferred rendering (stream complete in updateViews)")
+                logger("🔖 [Footnotes] Deferred rendering (stream complete in updateViews)")
             }
         }
 
@@ -1371,8 +1371,8 @@ public final class MarkdownViewTextKit: UIView {
 
         let deltaSize = newLength - lastParsedLength
         let parseSize = incrementalText.count
-        print("⚡️ [Incremental] Range: \(parseStartIndex)..\(newLength) | Delta: \(deltaSize) chars | Parse: \(parseSize) chars (window: \(contextWindowSize))")
-        print("⚡️ [Incremental] Cache: \(parseCache.cachedElements.count) elements, \(lastParsedLength) chars")
+        logger("⚡️ [Incremental] Range: \(parseStartIndex)..\(newLength) | Delta: \(deltaSize) chars | Parse: \(parseSize) chars (window: \(contextWindowSize))")
+        logger("⚡️ [Incremental] Cache: \(parseCache.cachedElements.count) elements, \(lastParsedLength) chars")
 
         // 3️⃣ 异步解析增量内容
         renderQueue.async { [weak self] in
@@ -1390,7 +1390,7 @@ public final class MarkdownViewTextKit: UIView {
             let parseEnd = CFAbsoluteTimeGetCurrent()
             let parseDuration = parseEnd - parseStart
 
-            print("⚡️ [Incremental] Parse completed: \(incrementalElements.count) elements in \(String(format: "%.1f", parseDuration * 1000))ms")
+            logger("⚡️ [Incremental] Parse completed: \(incrementalElements.count) elements in \(String(format: "%.1f", parseDuration * 1000))ms")
 
             // 4️⃣ 回到主线程合并结果
             DispatchQueue.main.async { [weak self] in
@@ -1441,7 +1441,7 @@ public final class MarkdownViewTextKit: UIView {
         ? Array(incrementalElements.dropFirst(contextOverlapEstimate))
         : []
 
-        print("⚡️ [Incremental] Parsed \(incrementalElements.count) elements, skipping \(contextOverlapEstimate) overlap, adding \(trueNewElements.count) new")
+        logger("⚡️ [Incremental] Parsed \(incrementalElements.count) elements, skipping \(contextOverlapEstimate) overlap, adding \(trueNewElements.count) new")
 
         // 3️⃣ 追加新元素到缓存
         parseCache.cachedElements.append(contentsOf: trueNewElements)
@@ -1452,7 +1452,7 @@ public final class MarkdownViewTextKit: UIView {
             contentStackView.addArrangedSubview(view)
         }
 
-        print("⚡️ [Incremental] Total elements: \(parseCache.cachedElements.count), views: \(contentStackView.arrangedSubviews.count)")
+        logger("⚡️ [Incremental] Total elements: \(parseCache.cachedElements.count), views: \(contentStackView.arrangedSubviews.count)")
 
         // 4️⃣ 合并其他数据
         parseCache.cachedFootnotes = newFootnotes
@@ -1484,7 +1484,7 @@ public final class MarkdownViewTextKit: UIView {
         // 🔍 性能监控：performRender 开始
         if renderStartTime > 0 {
             let elapsed = (CFAbsoluteTimeGetCurrent() - renderStartTime) * 1000
-            print("🔍 [Perf] performRender start: +\(String(format: "%.1f", elapsed))ms")
+            logger("🔍 [Perf] performRender start: +\(String(format: "%.1f", elapsed))ms")
         }
 
         let perfStartTime = renderStartTime // 捕获性能监控起始时间
@@ -1493,7 +1493,7 @@ public final class MarkdownViewTextKit: UIView {
         // 节流已在 scheduleRerender 层面完成（150ms），这里只关心是否需要缓存失效
         if shouldInvalidateCache(newMarkdown: markdownText, containerWidth: containerWidth) {
             // 🔄 全量解析模式（首次渲染、删除内容、宽度变化）
-            print("🔄 [Full Parse] Cache invalidated, performing full parse")
+            logger("🔄 [Full Parse] Cache invalidated, performing full parse")
 
             // 清空缓存
             parseCache = ParseCache()
@@ -1509,7 +1509,7 @@ public final class MarkdownViewTextKit: UIView {
         } else {
             // ⚡️ 增量解析模式（流式追加 + 非流式但有缓存）
             let mode = isStreaming ? "Streaming incremental" : "Incremental"
-            print("⚡️ [\(mode) Parse] Parsing delta only (throttled by scheduleRerender)")
+            logger("⚡️ [\(mode) Parse] Parsing delta only (throttled by scheduleRerender)")
 
             performIncrementalParse(
                 fullText: markdownText,
@@ -1551,7 +1551,7 @@ public final class MarkdownViewTextKit: UIView {
             // 🔍 性能监控：解析完成
             if !self.isStreaming && perfStartTime > 0 {
                 let elapsed = (CFAbsoluteTimeGetCurrent() - perfStartTime) * 1000
-                print("🔍 [Perf] Parsing complete: +\(String(format: "%.1f", elapsed))ms (parse took \(String(format: "%.1f", parseDuration * 1000))ms)")
+                logger("🔍 [Perf] Parsing complete: +\(String(format: "%.1f", elapsed))ms (parse took \(String(format: "%.1f", parseDuration * 1000))ms)")
             }
 
             DispatchQueue.main.async { [weak self] in
@@ -1563,7 +1563,7 @@ public final class MarkdownViewTextKit: UIView {
                 self.renderVersionLock.unlock()
 
                 guard isLatestVersion else {
-                    print("[MarkdownDisplayView] 丢弃旧版本渲染结果 (version \(currentVersion))")
+                    logger("[MarkdownDisplayView] 丢弃旧版本渲染结果 (version \(currentVersion))")
                     return
                 }
 
@@ -1582,7 +1582,7 @@ public final class MarkdownViewTextKit: UIView {
                 // 🔍 性能监控：开始UI渲染
                 if !self.isStreaming && perfStartTime > 0 {
                     let elapsed = (CFAbsoluteTimeGetCurrent() - perfStartTime) * 1000
-                    print("🔍 [Perf] updateViews start: +\(String(format: "%.1f", elapsed))ms")
+                    logger("🔍 [Perf] updateViews start: +\(String(format: "%.1f", elapsed))ms")
                 }
 
                 self.updateViews(newElements: newElements, footnotes: footnotes, containerWidth: containerWidth, parseDuration: parseDuration, perfStartTime: perfStartTime)
@@ -1610,7 +1610,7 @@ public final class MarkdownViewTextKit: UIView {
 
         // 🔍 诊断日志
         if perfStartTime > 0 {
-            print("🔍 [Perf] updateViews: isStreaming=\(isStreaming), elementCount=\(newElements.count), shouldBatch=\(shouldUseBatchRendering)")
+            logger("🔍 [Perf] updateViews: isStreaming=\(isStreaming), elementCount=\(newElements.count), shouldBatch=\(shouldUseBatchRendering)")
         }
 
         if shouldUseBatchRendering {
@@ -1637,7 +1637,7 @@ public final class MarkdownViewTextKit: UIView {
                 return
             }
 
-            print("⚡️ [FirstScreen] Rendering \(firstScreenCutoff)/\(newElements.count) elements (~\(Int(targetHeight))pt)")
+            logger("⚡️ [FirstScreen] Rendering \(firstScreenCutoff)/\(newElements.count) elements (~\(Int(targetHeight))pt)")
 
             // 渲染首屏元素
             let firstScreenElements = Array(newElements.prefix(firstScreenCutoff))
@@ -1664,7 +1664,7 @@ public final class MarkdownViewTextKit: UIView {
             let actualFirstScreenHeight = contentStackView.bounds.height
             let firstScreenHeightError = actualFirstScreenHeight - estimatedFirstScreenHeight
 
-            print("📏 [FirstScreen] Estimated: \(String(format: "%.1f", estimatedFirstScreenHeight))pt, Actual: \(String(format: "%.1f", actualFirstScreenHeight))pt, Error: \(String(format: "%.1f", firstScreenHeightError))pt")
+            logger("📏 [FirstScreen] Estimated: \(String(format: "%.1f", estimatedFirstScreenHeight))pt, Actual: \(String(format: "%.1f", actualFirstScreenHeight))pt, Error: \(String(format: "%.1f", firstScreenHeightError))pt")
 
             // ⚡️ 添加占位视图，预留离屏内容空间，避免布局跳动
             let baseEstimatedHeight = offscreenElements.reduce(CGFloat(0)) { total, element in
@@ -1679,7 +1679,7 @@ public final class MarkdownViewTextKit: UIView {
             // 额外增加 5% 缓冲（比之前的10%少，因为已经用误差比例校准了）
             let estimatedOffscreenHeight = adjustedOffscreenHeight * 1.05
 
-            print("📦 [Placeholder] Creating placeholder: base=\(String(format: "%.1f", baseEstimatedHeight))pt, adjusted=\(String(format: "%.1f", adjustedOffscreenHeight))pt (ratio=\(String(format: "%.2f", errorRatio))), final=\(String(format: "%.1f", estimatedOffscreenHeight))pt")
+            logger("📦 [Placeholder] Creating placeholder: base=\(String(format: "%.1f", baseEstimatedHeight))pt, adjusted=\(String(format: "%.1f", adjustedOffscreenHeight))pt (ratio=\(String(format: "%.2f", errorRatio))), final=\(String(format: "%.1f", estimatedOffscreenHeight))pt")
 
             // 创建占位视图
             placeholderView?.removeFromSuperview()
@@ -1698,7 +1698,7 @@ public final class MarkdownViewTextKit: UIView {
             contentStackView.layoutIfNeeded()
 
             // ⚡️ 现在通知父视图完整高度（首屏内容 + 占位视图）
-            print("🎬 [FirstScreen] Calling notifyHeightChange() after adding placeholder")
+            logger("🎬 [FirstScreen] Calling notifyHeightChange() after adding placeholder")
             notifyHeightChange()
 
             // 🎯 阶段2: 延迟渲染离屏元素
@@ -1715,7 +1715,7 @@ public final class MarkdownViewTextKit: UIView {
                 guard let self = self else { return }
 
                 let offscreenStartTime = CFAbsoluteTimeGetCurrent()
-                print("⚡️ [Offscreen] Rendering remaining \(offscreenElementsCaptured.count) elements (append-only mode)")
+                logger("⚡️ [Offscreen] Rendering remaining \(offscreenElementsCaptured.count) elements (append-only mode)")
 
                 // ⭐️ 查找父 ScrollView，用于位置补偿
                 let scrollView = self.findParentScrollView()
@@ -1727,7 +1727,7 @@ public final class MarkdownViewTextKit: UIView {
 
                 // ⚡️ 移除占位视图
                 if let placeholder = self.placeholderView {
-                    print("📦 [Placeholder] Removing placeholder before offscreen rendering")
+                    logger("📦 [Placeholder] Removing placeholder before offscreen rendering")
                     placeholder.removeFromSuperview()
                     self.placeholderView = nil
                 }
@@ -1757,7 +1757,7 @@ public final class MarkdownViewTextKit: UIView {
 
                     let createTime = (CFAbsoluteTimeGetCurrent() - createStart) * 1000
                     if createTime > 10 {
-                        print("⚡️ [Offscreen] Created \(self.elementTypeString(element)) in \(String(format: "%.1f", createTime))ms")
+                        logger("⚡️ [Offscreen] Created \(self.elementTypeString(element)) in \(String(format: "%.1f", createTime))ms")
                     }
                 }
 
@@ -1778,22 +1778,22 @@ public final class MarkdownViewTextKit: UIView {
                 let contentHeightAfterRender = self.contentStackView.bounds.height
                 let heightDiff = contentHeightAfterRender - contentHeightBeforeRender
 
-                print("📏 [Offscreen] Height before: \(String(format: "%.1f", contentHeightBeforeRender))pt, after: \(String(format: "%.1f", contentHeightAfterRender))pt, diff: \(String(format: "%.1f", heightDiff))pt")
+                logger("📏 [Offscreen] Height before: \(String(format: "%.1f", contentHeightBeforeRender))pt, after: \(String(format: "%.1f", contentHeightAfterRender))pt, diff: \(String(format: "%.1f", heightDiff))pt")
 
                 if let scrollView = scrollView, abs(heightDiff) > 1 {
                     if scrollOffsetBeforeRender > 50 {
                         let newOffset = scrollOffsetBeforeRender + heightDiff
-                        print("📍 [Scroll Compensation] Adjusting offset: \(String(format: "%.1f", scrollOffsetBeforeRender)) -> \(String(format: "%.1f", newOffset))")
+                        logger("📍 [Scroll Compensation] Adjusting offset: \(String(format: "%.1f", scrollOffsetBeforeRender)) -> \(String(format: "%.1f", newOffset))")
                         UIView.performWithoutAnimation {
                             scrollView.contentOffset.y = max(0, newOffset)
                         }
                     } else {
-                        print("📍 [Scroll Compensation] Skipped (user at top, offset=\(String(format: "%.1f", scrollOffsetBeforeRender)))")
+                        logger("📍 [Scroll Compensation] Skipped (user at top, offset=\(String(format: "%.1f", scrollOffsetBeforeRender)))")
                     }
                 }
 
                 self.notifyHeightChange()
-                print("⚡️ [Offscreen] Completed in \(String(format: "%.1f", (CFAbsoluteTimeGetCurrent() - offscreenStartTime) * 1000))ms")
+                logger("⚡️ [Offscreen] Completed in \(String(format: "%.1f", (CFAbsoluteTimeGetCurrent() - offscreenStartTime) * 1000))ms")
             }
             offscreenRenderWorkItem = workItem
             DispatchQueue.main.asyncAfter(deadline: .now() + offscreenRenderDelay, execute: workItem)
@@ -1803,7 +1803,7 @@ public final class MarkdownViewTextKit: UIView {
 
         // 常规渲染（流式模式或元素数量较少）
         if perfStartTime > 0 {
-            print("🔍 [Perf] Using regular rendering (no batch)")
+            logger("🔍 [Perf] Using regular rendering (no batch)")
         }
         updateViewsInternal(
             newElements: newElements,
@@ -1945,7 +1945,7 @@ public final class MarkdownViewTextKit: UIView {
             let searchEnd = min(searchStart + 5, oldElements.count)
 
             if isNested {
-                // print("🔍 [Diff] Searching for nested element at newIndex=\(newIndex), searchStart=\(searchStart), searchEnd=\(searchEnd)")
+                // logger("🔍 [Diff] Searching for nested element at newIndex=\(newIndex), searchStart=\(searchStart), searchEnd=\(searchEnd)")
             }
 
             for i in searchStart..<searchEnd {
@@ -1956,7 +1956,7 @@ public final class MarkdownViewTextKit: UIView {
                 // 1. 检查类型是否兼容
                 if canReuseElement(old: oldElement, new: newElement) {
                     if isNested {
-                        // print("  → Found reusable element at oldIndex=\(i), attempting updateViewInPlace...")
+                        // logger("  → Found reusable element at oldIndex=\(i), attempting updateViewInPlace...")
                     }
 
                     // 2. 尝试执行更新 (如果 LaTeX 模式改变，这里会返回 false)
@@ -1969,18 +1969,18 @@ public final class MarkdownViewTextKit: UIView {
 
                         foundIndex = i
                         if isNested {
-                            // print("  ✅ updateViewInPlace succeeded, reusing view at index \(i)")
+                            // logger("  ✅ updateViewInPlace succeeded, reusing view at index \(i)")
                         }
                         break
                     } else {
                         // Update failed, count cost anyway
                         recordCost(for: "UpdateFail \(elementTypeString(newElement))", duration: CFAbsoluteTimeGetCurrent() - updateStart)
                         if isNested {
-                            // print("  ❌ updateViewInPlace failed or view not found")
+                            // logger("  ❌ updateViewInPlace failed or view not found")
                         }
                     }
                 } else if isNested {
-                    // print("  → oldElement at \(i) cannot be reused (type mismatch)")
+                    // logger("  → oldElement at \(i) cannot be reused (type mismatch)")
                 }
             }
 
@@ -1996,7 +1996,7 @@ public final class MarkdownViewTextKit: UIView {
             } else {
                 // 🆕 无法复用，创建新视图
                 if isNested {
-                    // print("  ⚠️ No reusable view found, creating NEW nested view")
+                    // logger("  ⚠️ No reusable view found, creating NEW nested view")
                 }
 
                 // ⏱ Measure Creation Time
@@ -2077,10 +2077,10 @@ public final class MarkdownViewTextKit: UIView {
 
     private func updateFootnotes(_ footnotes: [MarkdownFootnote], width: CGFloat, newElementCount: Int) {
         // ⭐️ [FOOTNOTE_DEBUG] 关键日志：谁调用了 updateFootnotes
-        print("[FOOTNOTE_DEBUG] 🚨 updateFootnotes CALLED! count=\(footnotes.count), isRealStreamingMode=\(isRealStreamingMode), isStreaming=\(isStreaming)")
+        logger("[FOOTNOTE_DEBUG] 🚨 updateFootnotes CALLED! count=\(footnotes.count), isRealStreamingMode=\(isRealStreamingMode), isStreaming=\(isStreaming)")
         // 打印调用栈的前几帧
         let callStack = Thread.callStackSymbols.prefix(8).joined(separator: "\n")
-        print("[FOOTNOTE_DEBUG] 📚 Call stack:\n\(callStack)")
+        logger("[FOOTNOTE_DEBUG] 📚 Call stack:\n\(callStack)")
 
         // ⚡️ 使用无动画更新，避免闪烁
         UIView.performWithoutAnimation {
@@ -2108,15 +2108,15 @@ public final class MarkdownViewTextKit: UIView {
         if !isBatchFirstScreen {
             loadImages()
             invalidateIntrinsicContentSize()
-            print("🎬 [Regular/Offscreen] Calling notifyHeightChange() after rendering \(newElements.count) elements")
+            logger("🎬 [Regular/Offscreen] Calling notifyHeightChange() after rendering \(newElements.count) elements")
             notifyHeightChange()
 
             // 🔍 性能监控：打印首帧时间（常规渲染模式）
             if perfStartTime > 0 {
                 let firstFrameTime = (CFAbsoluteTimeGetCurrent() - perfStartTime) * 1000
                 let renderTime = (CFAbsoluteTimeGetCurrent() - startTime) * 1000
-                print("🎯 [FIRST FRAME] Total: \(String(format: "%.1f", firstFrameTime))ms | Render: \(String(format: "%.1f", renderTime))ms (regular)")
-                print("🔍 [Perf] ========================================")
+                logger("🎯 [FIRST FRAME] Total: \(String(format: "%.1f", firstFrameTime))ms | Render: \(String(format: "%.1f", renderTime))ms (regular)")
+                logger("🔍 [Perf] ========================================")
             }
         } else {
             // 首屏阶段：只更新布局，但不通知高度（等添加占位视图后再通知）
@@ -2126,8 +2126,8 @@ public final class MarkdownViewTextKit: UIView {
             if perfStartTime > 0 {
                 let firstFrameTime = (CFAbsoluteTimeGetCurrent() - perfStartTime) * 1000
                 let renderTime = (CFAbsoluteTimeGetCurrent() - startTime) * 1000
-                print("🎯 [FIRST FRAME] Total: \(String(format: "%.1f", firstFrameTime))ms | Render: \(String(format: "%.1f", renderTime))ms (batched)")
-                print("🔍 [Perf] ========================================")
+                logger("🎯 [FIRST FRAME] Total: \(String(format: "%.1f", firstFrameTime))ms | Render: \(String(format: "%.1f", renderTime))ms (batched)")
+                logger("🔍 [Perf] ========================================")
             }
 
             // ⚠️ 注意：首屏不调用 notifyHeightChange()，等占位视图添加后再通知
@@ -2306,10 +2306,10 @@ public final class MarkdownViewTextKit: UIView {
     // MARK: - Custom View Creation
 
     private func createCustomView(data: CustomElementData, containerWidth: CGFloat) -> UIView {
-        print("🔷[MDEXT] createCustomView called: type=\(data.type), raw=\(data.rawText)")
+        logger("🔷[MDEXT] createCustomView called: type=\(data.type), raw=\(data.rawText)")
         // 从扩展管理器获取视图提供者
         guard let provider = MarkdownCustomExtensionManager.shared.viewProvider(for: data.type) else {
-            print("🔷[MDEXT] ❌ No viewProvider found for type: \(data.type)")
+            logger("🔷[MDEXT] ❌ No viewProvider found for type: \(data.type)")
             // 无匹配的视图提供者，返回占位视图
             let placeholder = UILabel()
             placeholder.text = "[\(data.type): \(data.rawText)]"
@@ -2318,7 +2318,7 @@ public final class MarkdownViewTextKit: UIView {
             return placeholder
         }
 
-        print("🔷[MDEXT] ✅ viewProvider found, creating view...")
+        logger("🔷[MDEXT] ✅ viewProvider found, creating view...")
         return provider.createView(
             for: data,
             configuration: configuration,
@@ -2584,7 +2584,7 @@ public final class MarkdownViewTextKit: UIView {
     /// 创建 LaTeX 公式视图（使用 LaTeXAttachment + ViewProvider 优化）
     private func createLatexView(latex: String, width: CGFloat, topSpacing: CGFloat, bottomSpacing: CGFloat) -> UIView {
         let createTime = CFAbsoluteTimeGetCurrent()
-        print("[STREAM] 📐 LaTeX 开始创建: \(latex.prefix(50))...")
+        logger("[STREAM] 📐 LaTeX 开始创建: \(latex.prefix(50))...")
 
         let container = UIView()
         container.translatesAutoresizingMaskIntoConstraints = false
@@ -2601,7 +2601,7 @@ public final class MarkdownViewTextKit: UIView {
             padding: configuration.latexPadding,
             backgroundColor: configuration.latexBackgroundColor
         )
-        print("[STREAM] 📐 LaTeXAttachment 创建耗时: \(String(format: "%.1f", (CFAbsoluteTimeGetCurrent() - attachmentStart) * 1000))ms")
+        logger("[STREAM] 📐 LaTeXAttachment 创建耗时: \(String(format: "%.1f", (CFAbsoluteTimeGetCurrent() - attachmentStart) * 1000))ms")
 
         // 创建专用的 TextKit2 TextView 来渲染附件
         let textKit2Start = CFAbsoluteTimeGetCurrent()
@@ -2622,7 +2622,7 @@ public final class MarkdownViewTextKit: UIView {
         attachmentString.addAttribute(.paragraphStyle, value: paragraphStyle, range: NSRange(location: 0, length: attachmentString.length))
 
         textContentStorage.attributedString = attachmentString
-        print("[STREAM] 📐 TextKit2 准备耗时: \(String(format: "%.1f", (CFAbsoluteTimeGetCurrent() - textKit2Start) * 1000))ms")
+        logger("[STREAM] 📐 TextKit2 准备耗时: \(String(format: "%.1f", (CFAbsoluteTimeGetCurrent() - textKit2Start) * 1000))ms")
 
         // 创建渲染视图
         let textView = UIView()
@@ -2631,7 +2631,7 @@ public final class MarkdownViewTextKit: UIView {
         // 让 TextKit2 在这个视图中渲染
         let layoutStart = CFAbsoluteTimeGetCurrent()
         textLayoutManager.textViewportLayoutController.layoutViewport()
-        print("[STREAM] 📐 TextKit2 layoutViewport 耗时: \(String(format: "%.1f", (CFAbsoluteTimeGetCurrent() - layoutStart) * 1000))ms")
+        logger("[STREAM] 📐 TextKit2 layoutViewport 耗时: \(String(format: "%.1f", (CFAbsoluteTimeGetCurrent() - layoutStart) * 1000))ms")
 
         // 从 textLayoutManager 获取已渲染的附件视图
         let viewProviderStart = CFAbsoluteTimeGetCurrent()
@@ -2654,16 +2654,16 @@ public final class MarkdownViewTextKit: UIView {
             }
             return !((attachmentView != nil))
         }
-        print("[STREAM] 📐 ViewProvider 获取耗时: \(String(format: "%.1f", (CFAbsoluteTimeGetCurrent() - viewProviderStart) * 1000))ms")
+        logger("[STREAM] 📐 ViewProvider 获取耗时: \(String(format: "%.1f", (CFAbsoluteTimeGetCurrent() - viewProviderStart) * 1000))ms")
 
         // 如果通过 ViewProvider 获取到了视图，使用它；否则回退到直接创建
         let formulaView: UIView
         if let view = attachmentView {
-            print("[STREAM] 📐 使用 ViewProvider 视图")
+            logger("[STREAM] 📐 使用 ViewProvider 视图")
             formulaView = view
         } else {
             // 回退方案：直接创建
-            print("[STREAM] 📐 回退方案: 直接创建 LatexMathView")
+            logger("[STREAM] 📐 回退方案: 直接创建 LatexMathView")
             let fallbackStart = CFAbsoluteTimeGetCurrent()
             formulaView = LatexMathView.createScrollableView(
                 latex: latex,
@@ -2672,7 +2672,7 @@ public final class MarkdownViewTextKit: UIView {
                 padding: configuration.latexPadding,
                 backgroundColor: configuration.latexBackgroundColor
             )
-            print("[STREAM] 📐 回退创建耗时: \(String(format: "%.1f", (CFAbsoluteTimeGetCurrent() - fallbackStart) * 1000))ms")
+            logger("[STREAM] 📐 回退创建耗时: \(String(format: "%.1f", (CFAbsoluteTimeGetCurrent() - fallbackStart) * 1000))ms")
         }
 
         formulaView.translatesAutoresizingMaskIntoConstraints = false
@@ -2685,7 +2685,7 @@ public final class MarkdownViewTextKit: UIView {
             fontSize: configuration.latexFontSize,
             padding: configuration.latexPadding
         )
-        print("[STREAM] 📐 calculateSize 耗时: \(String(format: "%.1f", (CFAbsoluteTimeGetCurrent() - sizeCalcStart) * 1000))ms, 尺寸: \(formulaSize)")
+        logger("[STREAM] 📐 calculateSize 耗时: \(String(format: "%.1f", (CFAbsoluteTimeGetCurrent() - sizeCalcStart) * 1000))ms, 尺寸: \(formulaSize)")
 
         // 设置约束 - 根据对齐方式设置水平约束
         var constraints: [NSLayoutConstraint] = [
@@ -2708,13 +2708,13 @@ public final class MarkdownViewTextKit: UIView {
         NSLayoutConstraint.activate(constraints)
 
         let totalTime = (CFAbsoluteTimeGetCurrent() - createTime) * 1000
-        print("[STREAM] 📐 LaTeX 创建完成，总耗时: \(String(format: "%.1f", totalTime))ms")
+        logger("[STREAM] 📐 LaTeX 创建完成，总耗时: \(String(format: "%.1f", totalTime))ms")
 
         return container
     }
 
     private func createImageView(source: String, altText: String, width: CGFloat, topSpacing: CGFloat, bottomSpacing: CGFloat) -> UIView {
-        print("🖼️ [Image] Creating image view for: \(source) (alt: \(altText))")
+        logger("🖼️ [Image] Creating image view for: \(source) (alt: \(altText))")
 
         let container = UIView()
         container.translatesAutoresizingMaskIntoConstraints = false
@@ -2764,7 +2764,7 @@ public final class MarkdownViewTextKit: UIView {
             containerWidthConstraint
         ])
 
-        print("🖼️ [Image] Constraints set - width: ≤\(width), height: \(configuration.imagePlaceholderHeight)")
+        logger("🖼️ [Image] Constraints set - width: ≤\(width), height: \(configuration.imagePlaceholderHeight)")
 
         // 用占位图加载
         let placeholderImage = createPlaceholderImage(
@@ -2792,7 +2792,7 @@ public final class MarkdownViewTextKit: UIView {
             widthConstraint?.constant = targetWidth
             heightConstraint?.constant = targetHeight
 
-            print("🖼️ [Image] Loaded - actual size: \(targetWidth) × \(targetHeight)")
+            logger("🖼️ [Image] Loaded - actual size: \(targetWidth) × \(targetHeight)")
         }
 
         // 设置容器的内容优先级，防止被压缩
@@ -2803,8 +2803,8 @@ public final class MarkdownViewTextKit: UIView {
 
         // 调试：延迟打印容器大小
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            print("🖼️ [Image Debug] Container frame: \(container.frame), imageView frame: \(imageView.frame)")
-            print("🖼️ [Image Debug] Container bounds: \(container.bounds), imageView bounds: \(imageView.bounds)")
+            logger("🖼️ [Image Debug] Container frame: \(container.frame), imageView frame: \(imageView.frame)")
+            logger("🖼️ [Image Debug] Container bounds: \(container.bounds), imageView bounds: \(imageView.bounds)")
         }
 
         return container
@@ -2903,7 +2903,7 @@ public final class MarkdownViewTextKit: UIView {
         // [CODEBLOCK_DEBUG] 添加标识符
         textView.accessibilityIdentifier = "CodeBlockTextView"
 
-        print("[CODEBLOCK_DEBUG] 🏗️ createCodeBlockView: width=\(width), textLength=\(attributedString.length)")
+        logger("[CODEBLOCK_DEBUG] 🏗️ createCodeBlockView: width=\(width), textLength=\(attributedString.length)")
 
         // 🔥 核心修复:立即应用布局,计算文本实际可用宽度(减去 padding)
         let codeBlockWidth = max(0, width - 24)  // left 12 + right 12
@@ -3138,7 +3138,7 @@ public final class MarkdownViewTextKit: UIView {
         width: CGFloat
     ) -> UIView {
         let createTime = CFAbsoluteTimeGetCurrent()
-        print("[STREAM] 📦 Details 开始创建: \(summary), 包含 \(children.count) 个子元素")
+        logger("[STREAM] 📦 Details 开始创建: \(summary), 包含 \(children.count) 个子元素")
 
         // 外层容器，添加上下间距
         let outerContainer = UIView()
@@ -3234,7 +3234,7 @@ public final class MarkdownViewTextKit: UIView {
             }
 
             if childTime > 0.01 { // 超过 10ms 的子元素
-                print("[STREAM] 📦 Details 子元素 \(index + 1)/\(children.count) 耗时: \(String(format: "%.1f", childTime * 1000))ms")
+                logger("[STREAM] 📦 Details 子元素 \(index + 1)/\(children.count) 耗时: \(String(format: "%.1f", childTime * 1000))ms")
             }
 
             if let textView = childView as? MarkdownTextViewTK2,
@@ -3245,7 +3245,7 @@ public final class MarkdownViewTextKit: UIView {
         }
 
         if latexCount > 0 {
-            print("[STREAM] 📦 Details 包含 \(latexCount) 个 LaTeX，LaTeX 总耗时: \(String(format: "%.1f", latexTotalTime * 1000))ms")
+            logger("[STREAM] 📦 Details 包含 \(latexCount) 个 LaTeX，LaTeX 总耗时: \(String(format: "%.1f", latexTotalTime * 1000))ms")
         }
 
         summaryButton.addAction(
@@ -3379,16 +3379,16 @@ public final class MarkdownViewTextKit: UIView {
 
         // 🔍 调试日志：监控Details视图布局
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            print("🔍 [Details Debug] outerContainer frame: \(outerContainer.frame)")
-            print("🔍 [Details Debug] container frame: \(container.frame)")
-            print("🔍 [Details Debug] summaryButton frame: \(summaryButton.frame)")
-            print("🔍 [Details Debug] summaryButton isUserInteractionEnabled: \(summaryButton.isUserInteractionEnabled)")
-            print("🔍 [Details Debug] container isUserInteractionEnabled: \(container.isUserInteractionEnabled)")
-            print("🔍 [Details Debug] outerContainer isUserInteractionEnabled: \(outerContainer.isUserInteractionEnabled)")
+            logger("🔍 [Details Debug] outerContainer frame: \(outerContainer.frame)")
+            logger("🔍 [Details Debug] container frame: \(container.frame)")
+            logger("🔍 [Details Debug] summaryButton frame: \(summaryButton.frame)")
+            logger("🔍 [Details Debug] summaryButton isUserInteractionEnabled: \(summaryButton.isUserInteractionEnabled)")
+            logger("🔍 [Details Debug] container isUserInteractionEnabled: \(container.isUserInteractionEnabled)")
+            logger("🔍 [Details Debug] outerContainer isUserInteractionEnabled: \(outerContainer.isUserInteractionEnabled)")
         }
 
         let totalTime = (CFAbsoluteTimeGetCurrent() - createTime) * 1000
-        print("[STREAM] 📦 Details 创建完成: \(summary), 总耗时: \(String(format: "%.1f", totalTime))ms")
+        logger("[STREAM] 📦 Details 创建完成: \(summary), 总耗时: \(String(format: "%.1f", totalTime))ms")
 
         return outerContainer
     }
@@ -3603,9 +3603,9 @@ public final class MarkdownViewTextKit: UIView {
 
     private func createFootnoteView(footnotes: [MarkdownFootnote], width: CGFloat) -> UIView {
         // [FOOTNOTE_DEBUG] 脚注视图创建
-        print("[FOOTNOTE_DEBUG] 🎨 createFootnoteView called! count=\(footnotes.count), isRealStreamingMode=\(isRealStreamingMode)")
+        logger("[FOOTNOTE_DEBUG] 🎨 createFootnoteView called! count=\(footnotes.count), isRealStreamingMode=\(isRealStreamingMode)")
         let callStack = Thread.callStackSymbols.prefix(6).joined(separator: "\n")
-        print("[FOOTNOTE_DEBUG] 🎨 Call stack:\n\(callStack)")
+        logger("[FOOTNOTE_DEBUG] 🎨 Call stack:\n\(callStack)")
 
         let container = UIView()
         container.translatesAutoresizingMaskIntoConstraints = false
@@ -3865,22 +3865,22 @@ public final class MarkdownViewTextKit: UIView {
 
         // 有可见内容但高度仍为 0，通常是布局尚未稳定；本轮跳过，等待下一次布局回调
         if newHeight <= 0, hasVisibleContent, !force {
-            print("📏 [Height] ⏳ Deferred notification (transient 0 with visible content)")
+            logger("📏 [Height] ⏳ Deferred notification (transient 0 with visible content)")
             return
         }
 
         // 🔍 诊断日志：打印高度变化
         let heightDiff = newHeight - lastReportedHeight
-        print("🔍 [Height] Current: \(String(format: "%.1f", newHeight))pt | Last: \(String(format: "%.1f", lastReportedHeight))pt | Diff: \(String(format: "%.1f", heightDiff))pt | Force: \(force) | Width: \(String(format: "%.1f", fittingWidth)) | Source: \(usedFrameFallback ? "frame" : "fitting")")
+        logger("🔍 [Height] Current: \(String(format: "%.1f", newHeight))pt | Last: \(String(format: "%.1f", lastReportedHeight))pt | Diff: \(String(format: "%.1f", heightDiff))pt | Force: \(force) | Width: \(String(format: "%.1f", fittingWidth)) | Source: \(usedFrameFallback ? "frame" : "fitting")")
 
         // 只有高度变化超过阈值才通知，避免浮点数误差导致的死循环
         // 如果 force 为 true，忽略防抖检查
         if force || abs(newHeight - lastReportedHeight) > 9.0 {
-            print("📏 [Height] ✅ Notifying parent: \(String(format: "%.1f", lastReportedHeight)) -> \(String(format: "%.1f", newHeight))")
+            logger("📏 [Height] ✅ Notifying parent: \(String(format: "%.1f", lastReportedHeight)) -> \(String(format: "%.1f", newHeight))")
             lastReportedHeight = newHeight
             self.onHeightChange?(newHeight)
         } else {
-            print("📏 [Height] ⚠️ Skipped notification (diff < 9.0pt)")
+            logger("📏 [Height] ⚠️ Skipped notification (diff < 9.0pt)")
         }
     }
 
@@ -3984,20 +3984,20 @@ public final class MarkdownViewTextKit: UIView {
         // 准备震动反馈
         prepareHapticFeedback()
 
-        print("[STREAM] ========== START ==========")
-        print("[STREAM] 开始流式，文本长度: \(text.count) 字符")
+        logger("[STREAM] ========== START ==========")
+        logger("[STREAM] 开始流式，文本长度: \(text.count) 字符")
 
         // ⭐️ 新方案：后台预解析整个文本 + 分段显示
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self else { return }
 
             let parseStartTime = CFAbsoluteTimeGetCurrent()
-            print("[STREAM] 后台解析开始...")
+            logger("[STREAM] 后台解析开始...")
 
             // 1. 预处理脚注
             let (processedMarkdown, footnotes) = self.preprocessFootnotes(text)
             let footnoteTime = CFAbsoluteTimeGetCurrent() - parseStartTime
-            print("[STREAM] 脚注预处理完成: \(String(format: "%.1f", footnoteTime * 1000))ms")
+            logger("[STREAM] 脚注预处理完成: \(String(format: "%.1f", footnoteTime * 1000))ms")
 
             // 2. 一次性解析整个文本
             let markdownParseStart = CFAbsoluteTimeGetCurrent()
@@ -4006,7 +4006,7 @@ public final class MarkdownViewTextKit: UIView {
             let renderer = MarkdownRenderer(configuration: config, containerWidth: containerWidth)
             let (elements, attachments, tocItems, tocId) = renderer.render(processedMarkdown)
             let markdownParseTime = CFAbsoluteTimeGetCurrent() - markdownParseStart
-            print("[STREAM] Markdown解析完成: \(elements.count) 个元素, 耗时 \(String(format: "%.1f", markdownParseTime * 1000))ms")
+            logger("[STREAM] Markdown解析完成: \(elements.count) 个元素, 耗时 \(String(format: "%.1f", markdownParseTime * 1000))ms")
 
             // 3. 按标题分割，计算每个分片包含的元素范围
             let chunkRanges = self.calculateChunkElementRanges(
@@ -4015,13 +4015,13 @@ public final class MarkdownViewTextKit: UIView {
             )
 
             let totalParseTime = CFAbsoluteTimeGetCurrent() - parseStartTime
-            print("[STREAM] 后台解析全部完成: \(chunkRanges.count) 个分片, 总耗时 \(String(format: "%.1f", totalParseTime * 1000))ms")
+            logger("[STREAM] 后台解析全部完成: \(chunkRanges.count) 个分片, 总耗时 \(String(format: "%.1f", totalParseTime * 1000))ms")
 
             DispatchQueue.main.async { [weak self] in
                 guard let self = self, self.isStreaming else { return }
 
                 let mainThreadStart = CFAbsoluteTimeGetCurrent()
-                print("[STREAM] 主线程开始显示...")
+                logger("[STREAM] 主线程开始显示...")
 
                 // 保存解析结果
                 self.streamParsedFootnotes = footnotes
@@ -4061,7 +4061,7 @@ public final class MarkdownViewTextKit: UIView {
         let chunkCount = min(idealChunkCount, maxChunks)
         let elementsPerChunk = max(minElementsPerChunk, totalElements / chunkCount)
 
-        print("[STREAM] 分片策略: 总元素 \(totalElements), 分片数 \(chunkCount), 每片约 \(elementsPerChunk) 个元素")
+        logger("[STREAM] 分片策略: 总元素 \(totalElements), 分片数 \(chunkCount), 每片约 \(elementsPerChunk) 个元素")
 
         var ranges: [(startIndex: Int, endIndex: Int)] = []
         var currentStart = 0
@@ -4101,7 +4101,7 @@ public final class MarkdownViewTextKit: UIView {
         guard currentIndex < chunkRanges.count else {
             // 所有分片显示完成
             let elapsed = (CFAbsoluteTimeGetCurrent() - streamStartTime) * 1000
-            print("[STREAM] 所有分片显示完成, 总耗时: \(String(format: "%.1f", elapsed))ms")
+            logger("[STREAM] 所有分片显示完成, 总耗时: \(String(format: "%.1f", elapsed))ms")
             finishChunkedParsing()
             return
         }
@@ -4110,7 +4110,7 @@ public final class MarkdownViewTextKit: UIView {
         let isFirstChunk = (currentIndex == 0)
         let chunkStartTime = CFAbsoluteTimeGetCurrent()
 
-        print("[STREAM] 显示分片 \(currentIndex + 1)/\(chunkRanges.count): 元素 \(range.startIndex)..<\(range.endIndex)")
+        logger("[STREAM] 显示分片 \(currentIndex + 1)/\(chunkRanges.count): 元素 \(range.startIndex)..<\(range.endIndex)")
 
         // 显示当前分片的元素
         let containerWidth = bounds.width > 0 ? bounds.width : UIScreen.main.bounds.width - 32
@@ -4130,7 +4130,7 @@ public final class MarkdownViewTextKit: UIView {
             if case .latex = element {
                 latexCount += 1
                 latexTotalTime += viewTime
-                print("[STREAM] LaTeX #\(latexCount) 创建耗时: \(String(format: "%.1f", viewTime * 1000))ms")
+                logger("[STREAM] LaTeX #\(latexCount) 创建耗时: \(String(format: "%.1f", viewTime * 1000))ms")
             }
 
             view.tag = 1000 + i
@@ -4151,7 +4151,7 @@ public final class MarkdownViewTextKit: UIView {
         }
 
         let chunkTime = CFAbsoluteTimeGetCurrent() - chunkStartTime
-        print("[STREAM] 分片 \(currentIndex + 1) 完成: \(range.endIndex - range.startIndex) 个元素, 耗时 \(String(format: "%.1f", chunkTime * 1000))ms" +
+        logger("[STREAM] 分片 \(currentIndex + 1) 完成: \(range.endIndex - range.startIndex) 个元素, 耗时 \(String(format: "%.1f", chunkTime * 1000))ms" +
               (latexCount > 0 ? ", 其中 \(latexCount) 个LaTeX耗时 \(String(format: "%.1f", latexTotalTime * 1000))ms" : ""))
 
         streamDisplayedCount = range.endIndex
@@ -4160,7 +4160,7 @@ public final class MarkdownViewTextKit: UIView {
         // 第一个分片显示后触发 onStart
         if isFirstChunk {
             let elapsed = (CFAbsoluteTimeGetCurrent() - streamStartTime) * 1000
-            print("[STREAM] 首个分片完成，触发 onStart, 从开始到现在: \(String(format: "%.1f", elapsed))ms")
+            logger("[STREAM] 首个分片完成，触发 onStart, 从开始到现在: \(String(format: "%.1f", elapsed))ms")
             onStart?()
         }
 
@@ -4173,7 +4173,7 @@ public final class MarkdownViewTextKit: UIView {
         // 延迟显示下一个分片（给 UI 喘息时间）
         // ⭐️ 优化：从50ms降到20ms，配合最多20个分片，最大延迟 = 20 × 20ms = 400ms
         let elapsedSoFar = (CFAbsoluteTimeGetCurrent() - streamStartTime) * 1000
-        print("[STREAM] ⏱️ 准备显示分片 \(currentIndex + 2)/\(chunkRanges.count), 已累计耗时: \(String(format: "%.1f", elapsedSoFar))ms, 即将等待20ms...")
+        logger("[STREAM] ⏱️ 准备显示分片 \(currentIndex + 2)/\(chunkRanges.count), 已累计耗时: \(String(format: "%.1f", elapsedSoFar))ms, 即将等待20ms...")
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) { [weak self] in
             self?.displayChunksSequentially(
@@ -4252,11 +4252,11 @@ public final class MarkdownViewTextKit: UIView {
             }
         }
 
-        print("📦 [Fake-Stream] Split by headings: \(chunks.count) chunks")
+        logger("📦 [Fake-Stream] Split by headings: \(chunks.count) chunks")
         for (i, chunk) in chunks.enumerated() {
             let firstLine = chunk.components(separatedBy: .newlines).first ?? ""
             let preview = String(firstLine.prefix(50))
-            print("  ├─ Chunk[\(i)]: \"\(preview)...\" (\(chunk.count) chars)")
+            logger("  ├─ Chunk[\(i)]: \"\(preview)...\" (\(chunk.count) chars)")
         }
 
         return chunks
@@ -4274,7 +4274,7 @@ public final class MarkdownViewTextKit: UIView {
         guard isStreaming else { return }
         guard fakeStreamChunkIndex < fakeStreamChunks.count else {
             // ⭐️ 所有片段解析完成，直接结束流式（不再启动 token 流式）
-            print("✅ [Fake-Stream] All chunks parsed, finishing stream...")
+            logger("✅ [Fake-Stream] All chunks parsed, finishing stream...")
             finishChunkedParsing()
             return
         }
@@ -4288,7 +4288,7 @@ public final class MarkdownViewTextKit: UIView {
         let textToParse = fakeStreamParsedText
         let isFirstChunk = (fakeStreamChunkIndex == 1)
 
-        print("📝 [Fake-Stream] Parsing chunk \(fakeStreamChunkIndex)/\(fakeStreamChunks.count)...")
+        logger("📝 [Fake-Stream] Parsing chunk \(fakeStreamChunkIndex)/\(fakeStreamChunks.count)...")
 
         // 后台解析当前累积的文本
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
@@ -4309,7 +4309,7 @@ public final class MarkdownViewTextKit: UIView {
                 let previousCount = self.streamParsedElements.count
                 let newElements = Array(elements.dropFirst(previousCount))
 
-                print("✅ [Fake-Stream] Chunk \(self.fakeStreamChunkIndex) parsed: +\(newElements.count) elements, " +
+                logger("✅ [Fake-Stream] Chunk \(self.fakeStreamChunkIndex) parsed: +\(newElements.count) elements, " +
                       "total: \(elements.count), time: \(String(format: "%.1f", parseDuration * 1000))ms")
 
                 // 更新解析结果
@@ -4348,7 +4348,7 @@ public final class MarkdownViewTextKit: UIView {
         // ⚠️ 注意：不要在这里设置 isStreaming = false
         // 而是在 finishBlock 执行完毕后才设置，确保整个显示过程中滚动都能正常工作
 
-        print("🎉 [Fake-Stream] All chunks parsed, waiting for TypewriterEngine to finish...")
+        logger("🎉 [Fake-Stream] All chunks parsed, waiting for TypewriterEngine to finish...")
 
         // 3. ⭐️ 核心修复：脚注必须等 TypewriterEngine 动画完成后再渲染
         //    否则会出现"目录渲染完脚注就出来了"的问题
@@ -4366,7 +4366,7 @@ public final class MarkdownViewTextKit: UIView {
             if !footnotes.isEmpty {
                 let containerWidth = self.bounds.width > 0 ? self.bounds.width : UIScreen.main.bounds.width - 32
                 let elementCount = self.streamParsedElements.count
-                print("🔖 [Footnotes] TypewriterEngine finished, rendering \(footnotes.count) footnote(s) now")
+                logger("🔖 [Footnotes] TypewriterEngine finished, rendering \(footnotes.count) footnote(s) now")
                 self.updateFootnotes(footnotes, width: containerWidth, newElementCount: elementCount)
             }
 
@@ -4376,12 +4376,12 @@ public final class MarkdownViewTextKit: UIView {
             // 触发完成回调
             completionHandler?()
 
-            print("🎉 [Fake-Stream] Streaming completed!")
+            logger("🎉 [Fake-Stream] Streaming completed!")
         }
 
         // ⭐️ 关键检查：如果 TypewriterEngine 已经空闲，直接执行收尾逻辑
         if typewriterEngine.isIdle {
-            print("📌 [Fake-Stream] TypewriterEngine already idle, executing finish block immediately")
+            logger("📌 [Fake-Stream] TypewriterEngine already idle, executing finish block immediately")
             finishBlock()
         } else {
             // TypewriterEngine 还在运行，设置完成回调
@@ -4471,11 +4471,11 @@ public final class MarkdownViewTextKit: UIView {
 
         let containerWidth = bounds.width > 0 ? bounds.width : UIScreen.main.bounds.width - 32
 
-        print("📺 [Fake-Stream] Showing elements \(streamDisplayedCount)..<\(streamParsedElements.count)")
+        logger("📺 [Fake-Stream] Showing elements \(streamDisplayedCount)..<\(streamParsedElements.count)")
 
         for i in streamDisplayedCount..<streamParsedElements.count {
             let element = streamParsedElements[i]
-            print("  ├─ Element[\(i)]: \(elementTypeString(element))")
+            logger("  ├─ Element[\(i)]: \(elementTypeString(element))")
 
             let view = createView(for: element, containerWidth: containerWidth)
             view.tag = 1000 + i
@@ -4537,7 +4537,7 @@ public final class MarkdownViewTextKit: UIView {
 
                 // 检查是否有遗漏的元素
                 if elements.count > self.streamParsedElements.count {
-                    print("🔧 [Fake-Stream] Final parse found \(elements.count - self.streamParsedElements.count) missing elements")
+                    logger("🔧 [Fake-Stream] Final parse found \(elements.count - self.streamParsedElements.count) missing elements")
 
                     // 添加遗漏的元素
                     let containerWidth = self.bounds.width > 0 ? self.bounds.width : UIScreen.main.bounds.width - 32
@@ -4705,7 +4705,7 @@ public final class MarkdownViewTextKit: UIView {
             //    这样可以确保脚注渲染时仍然能触发外部容器的自动滚动
             if cachedFootnoteView != nil || !streamParsedFootnotes.isEmpty {
                 pendingFootnoteRender = true
-                print("🔖 [Footnotes] Deferred rendering until typewriter animations complete")
+                logger("🔖 [Footnotes] Deferred rendering until typewriter animations complete")
                 // ⚡️ 保持 isStreaming = true，直到脚注渲染完成
                 // 这样外部容器（如 TableView）仍然会自动滚动
                 return
@@ -4856,28 +4856,28 @@ public final class MarkdownViewTextKit: UIView {
 
     /// ⚡️ 如果有待渲染的脚注，则渲染（在打字机动画完成后调用）
     private func renderFootnotesIfPending() {
-        print("[FOOTNOTE_DEBUG] 📍 renderFootnotesIfPending called, isRealStreamingMode=\(isRealStreamingMode), pendingFootnoteRender=\(pendingFootnoteRender)")
+        logger("[FOOTNOTE_DEBUG] 📍 renderFootnotesIfPending called, isRealStreamingMode=\(isRealStreamingMode), pendingFootnoteRender=\(pendingFootnoteRender)")
 
         // ⭐️ 关键修复：真流式模式下不在这里渲染脚注
         // 脚注应该在 endRealStreaming() 中统一处理
         guard !isRealStreamingMode else {
-            print("[FOOTNOTE_DEBUG] ⏭️ Skipping - in real streaming mode")
+            logger("[FOOTNOTE_DEBUG] ⏭️ Skipping - in real streaming mode")
             return
         }
 
         guard pendingFootnoteRender else {
-            print("[FOOTNOTE_DEBUG] ⏭️ Skipping - pendingFootnoteRender is false")
+            logger("[FOOTNOTE_DEBUG] ⏭️ Skipping - pendingFootnoteRender is false")
             return
         }
 
-        print("[FOOTNOTE_DEBUG] ⚠️ WILL RENDER FOOTNOTES NOW!")
+        logger("[FOOTNOTE_DEBUG] ⚠️ WILL RENDER FOOTNOTES NOW!")
         pendingFootnoteRender = false
         renderFootnotesAfterStreaming()
 
         // ⚡️ 脚注渲染完成，现在可以结束流式状态了
         if isStreaming {
             isStreaming = false
-            print("✅ [Stream] Completed after footnote rendering")
+            logger("✅ [Stream] Completed after footnote rendering")
 
             // 触发完成回调
             onStreamComplete?()
@@ -4897,7 +4897,7 @@ public final class MarkdownViewTextKit: UIView {
 
         // ⚡️ 优先使用预渲染的缓存视图（避免重新创建导致的闪烁）
         if let cachedView = cachedFootnoteView {
-            print("🔖 [Footnotes] Using prerendered cached view (instant add)")
+            logger("🔖 [Footnotes] Using prerendered cached view (instant add)")
 
             // ⚡️ 正确计算元素数量
             let elementCount = oldElements.count
@@ -4916,7 +4916,7 @@ public final class MarkdownViewTextKit: UIView {
 
             // 清理缓存
             cachedFootnoteView = nil
-            print("✅ [Footnotes] Cached view added, no flicker")
+            logger("✅ [Footnotes] Cached view added, no flicker")
 
             // ⚡️ 关键修复：先布局，再通知外部容器高度已改变
             self.layoutIfNeeded()
@@ -4925,7 +4925,7 @@ public final class MarkdownViewTextKit: UIView {
         }
 
         // ⚠️ 降级方案：如果没有缓存（不应该发生），回退到常规渲染
-        print("⚠️ [Footnotes] No cached view, falling back to regular rendering")
+        logger("⚠️ [Footnotes] No cached view, falling back to regular rendering")
 
         // 重新解析脚注
         let (_, footnotes) = preprocessFootnotes(markdown)
@@ -4935,7 +4935,7 @@ public final class MarkdownViewTextKit: UIView {
         let elementCount = oldElements.count
         let containerWidth = bounds.width > 0 ? bounds.width : UIScreen.main.bounds.width - 32
 
-        print("🔖 [Footnotes] Rendering \(footnotes.count) footnote(s) after streaming (elementCount=\(elementCount))")
+        logger("🔖 [Footnotes] Rendering \(footnotes.count) footnote(s) after streaming (elementCount=\(elementCount))")
         updateFootnotes(footnotes, width: containerWidth, newElementCount: elementCount)
 
         // ⚡️ 关键修复：先布局，再通知外部容器高度已改变
@@ -4962,7 +4962,7 @@ public final class MarkdownViewTextKit: UIView {
             if !savedFootnotes.isEmpty {
                 // 使用已保存的脚注（假流式模式下已在 startStreaming 时解析）
                 footnotes = savedFootnotes
-                print("🔖 [Footnotes] Using pre-parsed \(footnotes.count) footnote(s)")
+                logger("🔖 [Footnotes] Using pre-parsed \(footnotes.count) footnote(s)")
             } else {
                 // 降级：尝试从原始文本解析（真流式模式或其他情况）
                 let (_, parsedFootnotes) = self.preprocessFootnotes(fullText)
@@ -4970,11 +4970,11 @@ public final class MarkdownViewTextKit: UIView {
             }
 
             guard !footnotes.isEmpty else {
-                print("🔖 [Footnotes] No footnotes to prerender")
+                logger("🔖 [Footnotes] No footnotes to prerender")
                 return
             }
 
-            print("🔖 [Footnotes] Prerendering \(footnotes.count) footnote(s) in background")
+            logger("🔖 [Footnotes] Prerendering \(footnotes.count) footnote(s) in background")
 
             // 获取容器宽度
             let containerWidth = DispatchQueue.main.sync {
@@ -4987,7 +4987,7 @@ public final class MarkdownViewTextKit: UIView {
             // 缓存预渲染的视图
             DispatchQueue.main.async {
                 self.cachedFootnoteView = footnoteView
-                print("✅ [Footnotes] Prerendering completed, cached view ready")
+                logger("✅ [Footnotes] Prerendering completed, cached view ready")
             }
         }
     }
@@ -5092,12 +5092,12 @@ public final class MarkdownViewTextKit: UIView {
         let isEngineIdle = typewriterEngine.isIdle
 
         // ⭐️ 调试日志
-        print("[WaitingIndicator] 检测: isEngineIdle=\(isEngineIdle), timeSinceLastData=\(String(format: "%.2f", timeSinceLastData))s, delay=\(waitingIndicatorDelay)s, isShowing=\(isShowingWaitingIndicator)")
+        logger("[WaitingIndicator] 检测: isEngineIdle=\(isEngineIdle), timeSinceLastData=\(String(format: "%.2f", timeSinceLastData))s, delay=\(waitingIndicatorDelay)s, isShowing=\(isShowingWaitingIndicator)")
 
         // ⭐️ 核心逻辑：只有当 TypewriterEngine 空闲且超过延迟时间未收到数据时才显示
         if isEngineIdle && timeSinceLastData > waitingIndicatorDelay {
             if !isShowingWaitingIndicator {
-                print("[WaitingIndicator] ✅ 条件满足，显示等待动画")
+                logger("[WaitingIndicator] ✅ 条件满足，显示等待动画")
                 showWaitingIndicator()
             }
         } else {
@@ -5177,7 +5177,7 @@ public final class MarkdownViewTextKit: UIView {
         // 启动跳动动画
         startWaitingAnimation()
 
-        print("[StreamBuffer] 💫 Waiting indicator shown")
+        logger("[StreamBuffer] 💫 Waiting indicator shown")
     }
 
     /// 隐藏等待动画
@@ -5192,7 +5192,7 @@ public final class MarkdownViewTextKit: UIView {
         waitingIndicatorView.isHidden = true
         waitingIndicatorView.removeFromSuperview()
 
-        print("[StreamBuffer] 💫 Waiting indicator hidden")
+        logger("[StreamBuffer] 💫 Waiting indicator hidden")
     }
 
     /// 启动等待动画（三点跳动）
@@ -5260,7 +5260,7 @@ public final class MarkdownViewTextKit: UIView {
     ///   - useSmartBuffer: 是否使用智能缓存模式（自动检测完整模块）
     ///   - onComplete: 流式完成回调
     public func beginRealStreaming(autoScrollBottom: Bool = true, useSmartBuffer: Bool = false, onComplete: (() -> Void)? = nil) {
-        print("[FOOTNOTE_DEBUG] 🟢 beginRealStreaming called, useSmartBuffer=\(useSmartBuffer)")
+        logger("[FOOTNOTE_DEBUG] 🟢 beginRealStreaming called, useSmartBuffer=\(useSmartBuffer)")
 
         // 停止任何现有流式
         stopStreaming()
@@ -5269,7 +5269,7 @@ public final class MarkdownViewTextKit: UIView {
         isRealStreamingMode = true
         isStreaming = true
         useSmartBufferMode = useSmartBuffer
-        print("[FOOTNOTE_DEBUG] 🟢 isRealStreamingMode set to TRUE")
+        logger("[FOOTNOTE_DEBUG] 🟢 isRealStreamingMode set to TRUE")
         autoScrollEnabled = autoScrollBottom
         realStreamAccumulatedText = ""
         realStreamParsedElementCount = 0
@@ -5302,7 +5302,7 @@ public final class MarkdownViewTextKit: UIView {
         // 记录开始时间
         streamingStartTimestamp = CFAbsoluteTimeGetCurrent()
 
-        print("🎬 [RealStream] Started real streaming mode, smartBuffer=\(useSmartBuffer)")
+        logger("🎬 [RealStream] Started real streaming mode, smartBuffer=\(useSmartBuffer)")
     }
 
     /// ⭐️ 新 API：追加流式数据（智能缓存模式）
@@ -5310,14 +5310,14 @@ public final class MarkdownViewTextKit: UIView {
     /// - Parameter data: 网络到达的原始文本数据
     public func appendStreamData(_ data: String) {
         guard isRealStreamingMode else {
-            print("⚠️ [RealStream] Not in real streaming mode, call beginRealStreaming() first")
+            logger("⚠️ [RealStream] Not in real streaming mode, call beginRealStreaming() first")
             return
         }
 
         // ⭐️ 标记收到新数据，用于等待动画检测
         markDataReceived()
 
-        print("📥 [SmartBuffer] Received data: \(data.count) chars")
+        logger("📥 [SmartBuffer] Received data: \(data.count) chars")
 
         // 使用 StreamBuffer 检测完整模块
         let result = streamBuffer.append(data)
@@ -5326,14 +5326,14 @@ public final class MarkdownViewTextKit: UIView {
         // 使用串行队列确保模块按顺序解析和渲染
         if !result.completeModules.isEmpty {
             for (index, moduleText) in result.completeModules.enumerated() {
-                print("📦 [SmartBuffer] Processing module \(index + 1)/\(result.completeModules.count): \(moduleText.prefix(50))...")
+                logger("📦 [SmartBuffer] Processing module \(index + 1)/\(result.completeModules.count): \(moduleText.prefix(50))...")
                 parseAndRenderModuleSync(moduleText)
             }
         }
 
         // 如果有未完成的结构，日志记录
         if result.hasPendingStructure, let pending = result.pendingType {
-            print("⏳ [SmartBuffer] Waiting for \(pending.rawValue) to close...")
+            logger("⏳ [SmartBuffer] Waiting for \(pending.rawValue) to close...")
         }
     }
 
@@ -5376,7 +5376,7 @@ public final class MarkdownViewTextKit: UIView {
         // ⭐️ 回到主线程更新 UI（不使用 sync 避免死锁）
         guard self.isRealStreamingMode, !elements.isEmpty || !attachments.isEmpty else { return }
 
-        print("✅ [SmartBuffer] Parsed module: \(elements.count) elements, time: \(String(format: "%.1f", parseDuration))ms")
+        logger("✅ [SmartBuffer] Parsed module: \(elements.count) elements, time: \(String(format: "%.1f", parseDuration))ms")
 
         // 累积到完整文本（用于最终的 markdown 属性）
         self.realStreamAccumulatedText += moduleText + "\n\n"
@@ -5407,7 +5407,7 @@ public final class MarkdownViewTextKit: UIView {
     /// - Note: 每个块应该是完整的 Markdown 结构，不会在语法中间截断
     public func appendBlock(_ block: String) {
         guard isRealStreamingMode else {
-            print("⚠️ [RealStream] Not in real streaming mode, call beginRealStreaming() first")
+            logger("⚠️ [RealStream] Not in real streaming mode, call beginRealStreaming() first")
             return
         }
 
@@ -5420,7 +5420,7 @@ public final class MarkdownViewTextKit: UIView {
         // ⭐️ 标记收到新数据，用于等待动画检测
         markDataReceived()
 
-        print("📝 [RealStream] Appending block: \(block.prefix(50))... (\(block.count) chars)")
+        logger("📝 [RealStream] Appending block: \(block.prefix(50))... (\(block.count) chars)")
 
         // 累积文本
         realStreamAccumulatedText += block
@@ -5447,8 +5447,8 @@ public final class MarkdownViewTextKit: UIView {
 
             // [FOOTNOTE_DEBUG] 检查脚注预处理
             if !removedFootnotes.isEmpty {
-                print("[FOOTNOTE_DEBUG] 📋 parseAndDisplayNewContent: preprocessFootnotes removed \(removedFootnotes.count) footnotes")
-                print("[FOOTNOTE_DEBUG] 📋 Original length: \(textToParse.count), Processed length: \(processedText.count)")
+                logger("[FOOTNOTE_DEBUG] 📋 parseAndDisplayNewContent: preprocessFootnotes removed \(removedFootnotes.count) footnotes")
+                logger("[FOOTNOTE_DEBUG] 📋 Original length: \(textToParse.count), Processed length: \(processedText.count)")
             }
 
             // 解析 Markdown
@@ -5466,20 +5466,20 @@ public final class MarkdownViewTextKit: UIView {
                 let newElementCount = elements.count
                 let addedElements = Array(elements.dropFirst(previousElementCount))
 
-                print("✅ [RealStream] Parsed: +\(addedElements.count) elements (total: \(newElementCount)), time: \(String(format: "%.1f", parseDuration))ms")
+                logger("✅ [RealStream] Parsed: +\(addedElements.count) elements (total: \(newElementCount)), time: \(String(format: "%.1f", parseDuration))ms")
 
                 // [CODEBLOCK_DEBUG] 打印新增元素类型
                 for (idx, elem) in addedElements.enumerated() {
                     switch elem {
                     case .codeBlock(let lang, _):
-                        print("[CODEBLOCK_DEBUG] 🟢 Added codeBlock[\(previousElementCount + idx)]: lang=\(lang ?? "nil")")
+                        logger("[CODEBLOCK_DEBUG] 🟢 Added codeBlock[\(previousElementCount + idx)]: lang=\(lang ?? "nil")")
                     case .heading(let id, let attr):
-                        print("[CODEBLOCK_DEBUG] 📌 Added heading[\(previousElementCount + idx)]: id=\(id), text=\(attr.string.prefix(30))")
+                        logger("[CODEBLOCK_DEBUG] 📌 Added heading[\(previousElementCount + idx)]: id=\(id), text=\(attr.string.prefix(30))")
                     case .attributedText(let attr):
                         let preview = attr.string.prefix(50).replacingOccurrences(of: "\n", with: "⏎")
-                        print("[CODEBLOCK_DEBUG] 📝 Added text[\(previousElementCount + idx)]: \(preview)")
+                        logger("[CODEBLOCK_DEBUG] 📝 Added text[\(previousElementCount + idx)]: \(preview)")
                     default:
-                        print("[CODEBLOCK_DEBUG] ➕ Added element[\(previousElementCount + idx)]: \(String(describing: elem).prefix(50))")
+                        logger("[CODEBLOCK_DEBUG] ➕ Added element[\(previousElementCount + idx)]: \(String(describing: elem).prefix(50))")
                     }
                 }
 
@@ -5565,7 +5565,7 @@ public final class MarkdownViewTextKit: UIView {
                case .codeBlock(_, let oldAttr) = oldElement {
                 // 如果新内容比旧内容长，需要更新视图
                 if newAttr.length > oldAttr.length {
-                    print("[CODEBLOCK_DEBUG] 🔄 Updating codeBlock[\(i)]: \(oldAttr.length) -> \(newAttr.length) chars, lang=\(newLang ?? "nil")")
+                    logger("[CODEBLOCK_DEBUG] 🔄 Updating codeBlock[\(i)]: \(oldAttr.length) -> \(newAttr.length) chars, lang=\(newLang ?? "nil")")
                     updateElementView(at: i, with: newElement, containerWidth: containerWidth)
                     oldElements[i] = newElement
                 }
@@ -5575,7 +5575,7 @@ public final class MarkdownViewTextKit: UIView {
             if case .latex(let newLatex) = newElement,
                case .latex(let oldLatex) = oldElement {
                 if newLatex.count > oldLatex.count {
-                    print("[CODEBLOCK_DEBUG] 🔄 Updating latex[\(i)]: \(oldLatex.count) -> \(newLatex.count) chars")
+                    logger("[CODEBLOCK_DEBUG] 🔄 Updating latex[\(i)]: \(oldLatex.count) -> \(newLatex.count) chars")
                     updateElementView(at: i, with: newElement, containerWidth: containerWidth)
                     oldElements[i] = newElement
                 }
@@ -5587,7 +5587,7 @@ public final class MarkdownViewTextKit: UIView {
                 let newInline = newAttr.attribute(inlineSegmentAttributeKey, at: 0, effectiveRange: nil) != nil
                 let oldInline = oldAttr.attribute(inlineSegmentAttributeKey, at: 0, effectiveRange: nil) != nil
                 if newAttr.string != oldAttr.string || newInline != oldInline {
-                    print("[CODEBLOCK_DEBUG] 🔄 Updating text[\(i)]: \(oldAttr.length) -> \(newAttr.length) chars")
+                    logger("[CODEBLOCK_DEBUG] 🔄 Updating text[\(i)]: \(oldAttr.length) -> \(newAttr.length) chars")
                     updateElementView(at: i, with: newElement, containerWidth: containerWidth)
                     oldElements[i] = newElement
                 }
@@ -5601,13 +5601,13 @@ public final class MarkdownViewTextKit: UIView {
 
         // 查找对应的视图
         guard let oldView = contentStackView.arrangedSubviews.first(where: { $0.tag == viewTag }) else {
-            print("[CODEBLOCK_DEBUG] ⚠️ Cannot find view with tag \(viewTag) for update")
+            logger("[CODEBLOCK_DEBUG] ⚠️ Cannot find view with tag \(viewTag) for update")
             return
         }
 
         // 获取旧视图在 StackView 中的索引
         guard let stackIndex = contentStackView.arrangedSubviews.firstIndex(of: oldView) else {
-            print("[CODEBLOCK_DEBUG] ⚠️ Cannot find stackIndex for view with tag \(viewTag)")
+            logger("[CODEBLOCK_DEBUG] ⚠️ Cannot find stackIndex for view with tag \(viewTag)")
             return
         }
 
@@ -5629,19 +5629,19 @@ public final class MarkdownViewTextKit: UIView {
             typewriterEngine.replaceView(oldView, with: newView)
         }
 
-        print("[CODEBLOCK_DEBUG] ✅ View[\(index)] updated at stackIndex=\(stackIndex)")
+        logger("[CODEBLOCK_DEBUG] ✅ View[\(index)] updated at stackIndex=\(stackIndex)")
     }
 
     /// 结束真流式模式
     /// - Parameter completion: 完成回调，在 TypewriterEngine 完全结束且脚注渲染完毕后触发
     public func endRealStreaming(completion: (() -> Void)? = nil) {
-        print("[FOOTNOTE_DEBUG] 🔴 endRealStreaming called, isRealStreamingMode=\(isRealStreamingMode)")
+        logger("[FOOTNOTE_DEBUG] 🔴 endRealStreaming called, isRealStreamingMode=\(isRealStreamingMode)")
         guard isRealStreamingMode else {
             completion?()
             return
         }
 
-        print("🎉 [RealStream] Ending real streaming mode")
+        logger("🎉 [RealStream] Ending real streaming mode")
 
         // ⭐️ 停止等待检测定时器
         stopWaitingDetection()
@@ -5656,7 +5656,7 @@ public final class MarkdownViewTextKit: UIView {
         if useSmartBufferMode {
             let remainingText = streamBuffer.flush()
             if !remainingText.isEmpty {
-                print("📦 [SmartBuffer] Flushing remaining content: \(remainingText.prefix(50))...")
+                logger("📦 [SmartBuffer] Flushing remaining content: \(remainingText.prefix(50))...")
                 // 同步解析剩余内容
                 let (processedText, _) = preprocessFootnotes(remainingText)
                 let containerWidth = bounds.width > 0 ? bounds.width : UIScreen.main.bounds.width - 32
@@ -5683,7 +5683,7 @@ public final class MarkdownViewTextKit: UIView {
 
         // ⚠️ 解析脚注，但延迟到 TypewriterEngine 完成后再渲染
         let (_, footnotes) = preprocessFootnotes(realStreamAccumulatedText)
-        print("[FOOTNOTE_DEBUG] 🔴 endRealStreaming parsed \(footnotes.count) footnotes, will defer rendering")
+        logger("[FOOTNOTE_DEBUG] 🔴 endRealStreaming parsed \(footnotes.count) footnotes, will defer rendering")
 
         // ⭐️ 关键修复：保存脚注和完成回调，等待 TypewriterEngine 完成后统一处理
         let pendingFootnotes = footnotes
@@ -5698,20 +5698,20 @@ public final class MarkdownViewTextKit: UIView {
                 return
             }
 
-            print("[FOOTNOTE_DEBUG] 🔴 finishBlock executing, rendering \(pendingFootnotes.count) footnotes")
+            logger("[FOOTNOTE_DEBUG] 🔴 finishBlock executing, rendering \(pendingFootnotes.count) footnotes")
 
             // 1. 先渲染脚注（此时 TypewriterEngine 已完成，内容已全部显示）
             if !pendingFootnotes.isEmpty {
                 let containerWidth = self.bounds.width > 0 ? self.bounds.width : UIScreen.main.bounds.width - 32
                 self.updateFootnotes(pendingFootnotes, width: containerWidth, newElementCount: self.oldElements.count)
-                print("📝 [RealStream] Processed \(pendingFootnotes.count) footnotes at end")
+                logger("📝 [RealStream] Processed \(pendingFootnotes.count) footnotes at end")
             }
 
             // 2. 重置状态
             self.isRealStreamingMode = false
             self.isStreaming = false
             self.useSmartBufferMode = false
-            print("[FOOTNOTE_DEBUG] 🔴 isRealStreamingMode set to FALSE")
+            logger("[FOOTNOTE_DEBUG] 🔴 isRealStreamingMode set to FALSE")
 
             // 3. 通知最终高度
             self.notifyHeightChange()
@@ -5721,17 +5721,17 @@ public final class MarkdownViewTextKit: UIView {
             externalCompletion?()
 
             let elapsed = (CFAbsoluteTimeGetCurrent() - self.streamingStartTimestamp) * 1000
-            print("✅ [RealStream] Completed in \(String(format: "%.1f", elapsed))ms")
-            print("Full text is:\n\(self.realStreamAccumulatedText)")
+            logger("✅ [RealStream] Completed in \(String(format: "%.1f", elapsed))ms")
+            logger("Full text is:\n\(self.realStreamAccumulatedText)")
         }
 
         // ⭐️ 关键检查：如果 TypewriterEngine 已经空闲，直接执行收尾逻辑
         if typewriterEngine.isIdle {
-            print("[FOOTNOTE_DEBUG] 🔴 TypewriterEngine already idle, executing finishBlock immediately")
+            logger("[FOOTNOTE_DEBUG] 🔴 TypewriterEngine already idle, executing finishBlock immediately")
             finishBlock()
         } else {
             // TypewriterEngine 还在运行，等待其完成
-            print("[FOOTNOTE_DEBUG] 🔴 TypewriterEngine still running, waiting for completion")
+            logger("[FOOTNOTE_DEBUG] 🔴 TypewriterEngine still running, waiting for completion")
             let originalOnComplete = typewriterEngine.onComplete
             typewriterEngine.onComplete = { [weak self] in
                 // 恢复原回调
@@ -5773,7 +5773,7 @@ public final class MarkdownViewTextKit: UIView {
             // 1. ⚡️ 优化：如果有脚注，则延迟结束流式状态
             if cachedFootnoteView != nil || !streamParsedFootnotes.isEmpty {
                 pendingFootnoteRender = true
-                print("🔖 [Footnotes] Deferred rendering (resume completed)")
+                logger("🔖 [Footnotes] Deferred rendering (resume completed)")
                 // 保持 isStreaming = true，直到脚注渲染完成
                 return
             }

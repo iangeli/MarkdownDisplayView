@@ -86,29 +86,29 @@ public final class MarkdownRenderer {
         var result = parser.parseAndRender(preprocessedMarkdown)
 
         // 🔷 调试：打印解析后的元素，查找占位符
-        print("🔷[MDEXT] ===== Parsed Elements (looking for placeholders) =====")
+        logger("🔷[MDEXT] ===== Parsed Elements (looking for placeholders) =====")
         for (idx, element) in result.elements.enumerated() {
             switch element {
             case .attributedText(let attr):
                 let text = attr.string
                 for placeholder in customDataMap.keys {
                     if text.contains(placeholder) {
-                        print("🔷[MDEXT] 📍 Element[\(idx)] attributedText CONTAINS '\(placeholder)'")
-                        print("🔷[MDEXT]    Full text: '\(text.replacingOccurrences(of: "\n", with: "⏎"))'")
+                        logger("🔷[MDEXT] 📍 Element[\(idx)] attributedText CONTAINS '\(placeholder)'")
+                        logger("🔷[MDEXT]    Full text: '\(text.replacingOccurrences(of: "\n", with: "⏎"))'")
                     }
                 }
             case .heading(let id, let attr):
                 let text = attr.string
                 for placeholder in customDataMap.keys {
                     if text.contains(placeholder) {
-                        print("🔷[MDEXT] 📍 Element[\(idx)] heading CONTAINS '\(placeholder)'")
+                        logger("🔷[MDEXT] 📍 Element[\(idx)] heading CONTAINS '\(placeholder)'")
                     }
                 }
             default:
                 break
             }
         }
-        print("🔷[MDEXT] ===== End Parsed Elements =====")
+        logger("🔷[MDEXT] ===== End Parsed Elements =====")
 
         // 4. 后处理：将占位符替换为自定义元素
         if !customDataMap.isEmpty {
@@ -353,7 +353,7 @@ public final class MarkdownRenderer {
     /// 预处理：扫描自定义语法，替换为占位符
     private func preprocessCustomSyntax(in markdown: String) -> (String, [String: CustomElementData]) {
         let customMatches = MarkdownCustomExtensionManager.shared.preprocessCustomElements(in: markdown)
-        print("🔷[MDEXT] preprocessCustomSyntax: found \(customMatches.count) custom matches")
+        logger("🔷[MDEXT] preprocessCustomSyntax: found \(customMatches.count) custom matches")
         guard !customMatches.isEmpty else { return (markdown, [:]) }
 
         var processedMarkdown = markdown
@@ -365,14 +365,14 @@ public final class MarkdownRenderer {
         for (index, (range, data)) in sortedMatches.enumerated() {
             let placeholder = "\(Self.placeholderPrefix)\(index)\(Self.placeholderSuffix)"
             customDataMap[placeholder] = data
-            print("🔷[MDEXT] placeholder[\(index)]: '\(placeholder)' -> type=\(data.type), raw=\(data.rawText), NSRange=\(range)")
+            logger("🔷[MDEXT] placeholder[\(index)]: '\(placeholder)' -> type=\(data.type), raw=\(data.rawText), NSRange=\(range)")
 
             if let swiftRange = Range(range, in: processedMarkdown) {
                 let originalText = String(processedMarkdown[swiftRange])
                 processedMarkdown.replaceSubrange(swiftRange, with: placeholder)
-                print("🔷[MDEXT] ✅ replaced '\(originalText)' with '\(placeholder)'")
+                logger("🔷[MDEXT] ✅ replaced '\(originalText)' with '\(placeholder)'")
             } else {
-                print("🔷[MDEXT] ❌ FAILED to convert NSRange to Range!")
+                logger("🔷[MDEXT] ❌ FAILED to convert NSRange to Range!")
             }
         }
 
@@ -382,7 +382,7 @@ public final class MarkdownRenderer {
                 let start = processedMarkdown.index(range.lowerBound, offsetBy: -30, limitedBy: processedMarkdown.startIndex) ?? processedMarkdown.startIndex
                 let end = processedMarkdown.index(range.upperBound, offsetBy: 30, limitedBy: processedMarkdown.endIndex) ?? processedMarkdown.endIndex
                 let context = String(processedMarkdown[start..<end]).replacingOccurrences(of: "\n", with: "⏎")
-                print("🔷[MDEXT] context for '\(placeholder)': ...\(context)...")
+                logger("🔷[MDEXT] context for '\(placeholder)': ...\(context)...")
             }
         }
 
@@ -394,14 +394,14 @@ public final class MarkdownRenderer {
         in elements: [MarkdownRenderElement],
         customDataMap: [String: CustomElementData]
     ) -> [MarkdownRenderElement] {
-        print("🔷[MDEXT] restoreCustomElements: \(elements.count) elements, \(customDataMap.count) placeholders")
+        logger("🔷[MDEXT] restoreCustomElements: \(elements.count) elements, \(customDataMap.count) placeholders")
         var newElements: [MarkdownRenderElement] = []
 
         for element in elements {
             switch element {
             case .attributedText(let attrString):
                 let text = attrString.string
-                print("🔷[MDEXT] checking attributedText: '\(text.prefix(50))...'")
+                logger("🔷[MDEXT] checking attributedText: '\(text.prefix(50))...'")
 
                 // 查找文本中位置最靠前的占位符
                 var foundPlaceholder: (placeholder: String, data: CustomElementData, position: Int)?
@@ -415,23 +415,23 @@ public final class MarkdownRenderer {
                 }
 
                 if let found = foundPlaceholder {
-                    print("🔷[MDEXT] ✅ FOUND placeholder '\(found.placeholder)' at position \(found.position)")
+                    logger("🔷[MDEXT] ✅ FOUND placeholder '\(found.placeholder)' at position \(found.position)")
                     let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
-                    print("🔷[MDEXT] trimmedText='\(trimmedText.prefix(80))...', placeholder='\(found.placeholder)'")
+                    logger("🔷[MDEXT] trimmedText='\(trimmedText.prefix(80))...', placeholder='\(found.placeholder)'")
 
                     // 如果整段只有占位符，直接替换为自定义元素
                     if trimmedText == found.placeholder {
-                        print("🔷[MDEXT] ✅ replacing entire text with .custom element")
+                        logger("🔷[MDEXT] ✅ replacing entire text with .custom element")
                         newElements.append(.custom(found.data))
                     } else {
-                        print("🔷[MDEXT] 🔀 splitting text around placeholder...")
+                        logger("🔷[MDEXT] 🔀 splitting text around placeholder...")
                         // 拆分：前文本 + 自定义元素 + 后文本
                         if let placeholderRange = text.range(of: found.placeholder) {
                             let beforeText = String(text[..<placeholderRange.lowerBound])
                                 .trimmingCharacters(in: .whitespacesAndNewlines)
                             let afterText = String(text[placeholderRange.upperBound...])
                                 .trimmingCharacters(in: .whitespacesAndNewlines)
-                            print("🔷[MDEXT] beforeText='\(beforeText.prefix(30))', afterText='\(afterText.prefix(30))'")
+                            logger("🔷[MDEXT] beforeText='\(beforeText.prefix(30))', afterText='\(afterText.prefix(30))'")
 
                             if !beforeText.isEmpty {
                                 let beforeAttr = NSAttributedString(string: beforeText, attributes: [
@@ -441,7 +441,7 @@ public final class MarkdownRenderer {
                                 newElements.append(.attributedText(beforeAttr))
                             }
 
-                            print("🔷[MDEXT] ✅ appending .custom element after split")
+                            logger("🔷[MDEXT] ✅ appending .custom element after split")
                             newElements.append(.custom(found.data))
 
                             // 递归处理 afterText，因为可能还有其他占位符
@@ -458,7 +458,7 @@ public final class MarkdownRenderer {
                                 newElements.append(contentsOf: processedAfter)
                             }
                         } else {
-                            print("🔷[MDEXT] ❌ placeholderRange not found!")
+                            logger("🔷[MDEXT] ❌ placeholderRange not found!")
                             newElements.append(element)
                         }
                     }

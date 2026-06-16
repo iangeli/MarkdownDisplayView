@@ -382,11 +382,11 @@ extension MarkdownTextViewTK2 {
     /// 准备打字机效果：将所有文字设为透明，但保留布局占位
     func prepareForTypewriter() {
         guard let attr = textContentStorage.attributedString else {
-            print("[TYPEWRITER] ⚠️ prepareForTypewriter 失败: textContentStorage.attributedString 为 nil")
+            logger("[TYPEWRITER] ⚠️ prepareForTypewriter 失败: textContentStorage.attributedString 为 nil")
             return
         }
 
-        print("[TYPEWRITER] 🎯 prepareForTypewriter 开始, 文本长度: \(attr.length), 内容: \(attr.string.prefix(50))...")
+        logger("[TYPEWRITER] 🎯 prepareForTypewriter 开始, 文本长度: \(attr.length), 内容: \(attr.string.prefix(50))...")
 
         // ⭐️ 重置显示位置
         lastRevealedIndex = 0
@@ -403,7 +403,7 @@ extension MarkdownTextViewTK2 {
             textContentStorage.attributedString = mutable
             textLayoutManager.ensureLayout(for: textLayoutManager.documentRange)
             setNeedsDisplay()
-            print("[TYPEWRITER] 🎯 prepareForTypewriter 完成 (append)")
+            logger("[TYPEWRITER] 🎯 prepareForTypewriter 完成 (append)")
             return
         }
 
@@ -429,7 +429,7 @@ extension MarkdownTextViewTK2 {
         textLayoutManager.ensureLayout(for: textLayoutManager.documentRange)
         setNeedsDisplay()
 
-        print("[TYPEWRITER] 🎯 prepareForTypewriter 完成")
+        logger("[TYPEWRITER] 🎯 prepareForTypewriter 完成")
     }
 
     /// 揭示前 N 个字符（支持批量显示）
@@ -483,7 +483,7 @@ extension MarkdownTextViewTK2 {
 
         guard let originalAttr = attributedText,
               let workingAttr = cachedMutableString else {
-            print("[TYPEWRITER] ⚠️ revealCharacter 提前返回: attributedText=\(attributedText != nil), cachedMutableString=\(cachedMutableString != nil), index=\(index)")
+            logger("[TYPEWRITER] ⚠️ revealCharacter 提前返回: attributedText=\(attributedText != nil), cachedMutableString=\(cachedMutableString != nil), index=\(index)")
             return false
         }
 
